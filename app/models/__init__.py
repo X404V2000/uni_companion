@@ -1,0 +1,22 @@
+from app.models.academic import AcademicTask, Module, TimetableSlot
+from app.models.ai import (
+    AISummaryCache,
+    BriefChunk,
+    BriefDocument,
+    UserAIQuota,
+)
+from app.models.analytics import Feedback, UsageEvent
+from app.models.material import StudyMaterial
+from app.models.user import User
+
+__all__ = [
+    "User",
+    "Module",
+    "TimetableSlot",
+    "AcademicTask",
+    "UserAIQuota",
+    "AISummaryCache",
+    "StudyMaterial",
+    "UsageEvent",
+    "Feedback",
+]

@@ -1,0 +1,56 @@
+# ============================================================================
+# .dockerignore — keep build context lean AND secrets out of the image.
+# ============================================================================
+# Rule of thumb: if it can be regenerated or must never ship, exclude it.
+
+# --- Secrets: never bake credentials into an image ---
+.env
+.env.*
+!.env.example
+
+# --- Version control ---
+.git
+.gitignore
+.github
+
+# --- Python caches / build artifacts ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Local virtual environment (huge; rebuilt inside the image) ---
+venv/
+.venv/
+
+# --- Project-local secrets & scratch (never bake into an image) ---
+staging_deployement/
+github.md
+
+# --- AI/assistant local caches (not runtime; can be large) ---
+.aider*
+.ruff_cache/
+
+# --- Tests & tooling (not needed in the runtime image) ---
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# --- Logs & local state ---
+logs/
+*.log
+
+# --- Documentation / planning (not runtime) ---
+plan/
+*.md
+
+# --- Editor / OS cruft ---
+.vscode/
+.idea/
+.DS_Store

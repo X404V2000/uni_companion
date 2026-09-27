@@ -1,0 +1,48 @@
+# ___ web framework ___
+fastapi==0.115.0
+uvicorn==0.32.0
+# Uvicorn (plain, no [standard] extra). The [standard] extra pulls uvloop,
+# httptools, watchfiles and websockets (~20 MB) which a 2-worker production
+# API does not need — dropping it is the single largest image-size win.
+
+# ___ Database ___
+sqlalchemy==2.0.35
+# SQLAlchemy ORM - defines tables as Python classes, writes queries safely
+# (parameterized, preventing SQL injection).
+
+alembic==1.13.3
+# Database migrations (Week 2). Source of truth for schema changes; replace
+# the earlier create_all()/inline DDL dev-only approach.
+
+psycopg[binary]==3.3.5
+# psycopg v3 - PostgreSQL driver for Python. The [binary] extra bundles
+# libpq so no system dependencies needed. SQLAlchemy connects to Postgres
+# through this driver.
+
+
+# ___ Configuration ___
+python-dotenv==1.0.1
+# Reads .env file values into environment variables.
+
+pydantic==2.9.2
+pydantic-settings==2.5.2
+# Pydantic validates data shapes (config settings + user input validation).
+
+# ___ Email validation ___
+email-validator==2.2.0
+# Required for Pydantic's EmailStr type - validates email format.
+
+# ___ Security & Rate Limiting ___
+slowapi==0.1.9
+# Rate limit middleware - protects against brute-force and DoS attacks.
+# ___ Password hashing ___
+bcrypt==4.2.1
+# ___ JWT Authentication ___
+PyJWT==2.10.1
+
+# ___ Outbound HTTP (transactional email) ___
+httpx==0.27.2
+# Used by app/core/email.py to call the Resend REST API. This is a RUNTIME
+# dependency (not test-only): the app imports it at startup regardless of
+# whether EMAIL_API_KEY is configured. Also transitively required by
+# starlette's TestClient in the dev requirements.

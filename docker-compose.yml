@@ -1,0 +1,52 @@
+# ============================================================================
+# docker-compose.yml — local "production-parity" runner
+# ============================================================================
+# One command bootstraps the API (built from ./Dockerfile) + a real Postgres
+# 15 instance, so local development matches the deployed topology (no SQLite,
+# no monkey-patching). Migrations are applied at startup by the `web` service
+# entrypoint before uvicorn runs, mirroring the CI pipeline ordering.
+#
+# NOTE: secrets below are DEVELOPMENT-ONLY defaults. Production must inject
+# real values via environment/secrets manager — never commit those.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: varsity_companion_api
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development            # local only; prod overrides to "production"
+      DATABASE_URL: postgresql+psycopg://app_user:app_password@db:5432/varsity_companion_dev
+      JWT_SECRET_KEY: sa8gsJASFBSgAT6vXT8VCdygGCYGSAY
+      LOG_TO_FILE: "false"                 # containers: stdout is captured centrally
+    depends_on:
+      db:
+        condition: service_healthy
+    # Apply migrations idempotently, then start the server. Running this as a
+    # login shell command (sh -c) keeps the image's non-root user intact.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+
+  db:
+    image: postgres:15-alpine
+    container_name: varsity_companion_db
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: varsity_companion_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d varsity_companion_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

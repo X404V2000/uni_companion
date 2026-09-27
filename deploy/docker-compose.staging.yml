@@ -1,0 +1,73 @@
+# ============================================================================
+# deploy/docker-compose.staging.yml — STAGING deployment orchestration
+# ============================================================================
+# Week 4, Day 4. Runs the hardened, non-root multi-stage image (Dockerfile)
+# under ENVIRONMENT=staging (full production parity: Secure cookies, docs off,
+# HSTS, JWT boot guard).
+#
+# USAGE
+#   Self-contained VPS deploy (bundled Postgres):
+#     export STAGING_DB_PASSWORD='<strong db password>'
+#     export STAGING_JWT_SECRET_KEY="$(openssl rand -hex 32)"
+#     docker compose -f deploy/docker-compose.staging.yml up -d --build
+#
+#   Managed Neon staging DB (recommended at scale):
+#     remove the `db` service below, then:
+#     export STAGING_DATABASE_URL='postgresql+psycopg://user:pass@host/stagingdb?sslmode=require'
+#     export STAGING_JWT_SECRET_KEY="$(openssl rand -hex 32)"
+#     docker compose -f deploy/docker-compose.staging.yml up -d --build
+#
+#   NEVER commit real secrets. Toggle between the two paths is read
+#   automatically by the web service (see DATABASE_URL default below).
+# ============================================================================
+
+x-staging-common: &staging-env
+  ENVIRONMENT: staging
+  JWT_SECRET_KEY: ${STAGING_JWT_SECRET_KEY:?STAGING_JWT_SECRET_KEY must be set}
+  EMAIL_API_KEY: ${STAGING_EMAIL_API_KEY:-}
+  EMAIL_FROM: ${STAGING_EMAIL_FROM:-onboarding@varsitycompanion.co.za}
+  CORS_ORIGINS: ${STAGING_CORS_ORIGINS:-https://staging-app.varsitycompanion.co.za}
+  LOG_TO_FILE: "false"
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: varsity_companion_staging_api
+    restart: unless-stopped
+    ports:
+      # Local bind only; Cloudflare proxies 443 -> this. Do NOT expose 8000
+      # publicly as plain HTTP.
+      - "127.0.0.1:8001:8000"
+    environment:
+      <<: *staging-env
+      # Default to the bundled `db` service. Override with STAGING_DATABASE_URL
+      # (managed Neon) and remove the `db` service.
+      DATABASE_URL: ${STAGING_DATABASE_URL:-postgresql+psycopg://${STAGING_DB_USER:-app_user}:${STAGING_DB_PASSWORD:?STAGING_DB_PASSWORD must be set}@db:5432/${STAGING_DB_NAME:-varsity_companion_staging}}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+
+  # Optional: only when using a self-hosted staging Postgres (not managed Neon).
+  db:
+    image: postgres:15-alpine
+    container_name: varsity_companion_staging_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${STAGING_DB_USER:-app_user}
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?STAGING_DB_PASSWORD must be set}
+      POSTGRES_DB: ${STAGING_DB_NAME:-varsity_companion_staging}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STAGING_DB_USER:-app_user} -d ${STAGING_DB_NAME:-varsity_companion_staging}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  staging_postgres_data:

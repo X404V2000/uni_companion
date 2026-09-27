@@ -1,0 +1,4379 @@
+{
+  "components": {
+    "schemas": {
+      "AISummaryRequest": {
+        "properties": {
+          "content": {
+            "description": "Raw study notes, lecture text, or extracted page/file text.",
+            "maxLength": 200000,
+            "minLength": 20,
+            "title": "Content",
+            "type": "string"
+          },
+          "module_code": {
+            "maxLength": 20,
+            "minLength": 2,
+            "title": "Module Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_code",
+          "content"
+        ],
+        "title": "AISummaryRequest",
+        "type": "object"
+      },
+      "AISummaryResponse": {
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "daily_limit": {
+            "title": "Daily Limit",
+            "type": "integer"
+          },
+          "remaining_credits": {
+            "title": "Remaining Credits",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "cached",
+          "remaining_credits",
+          "daily_limit"
+        ],
+        "title": "AISummaryResponse",
+        "type": "object"
+      },
+      "AcademicDashboardResponse": {
+        "properties": {
+          "ai_quota": {
+            "$ref": "#/components/schemas/UserQuotaResponse"
+          },
+          "modules_count": {
+            "title": "Modules Count",
+            "type": "integer"
+          },
+          "server_timestamp": {
+            "format": "date-time",
+            "title": "Server Timestamp",
+            "type": "string"
+          },
+          "today_slots": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotResponse"
+            },
+            "title": "Today Slots",
+            "type": "array"
+          },
+          "urgent_tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "title": "Urgent Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_timestamp",
+          "today_slots",
+          "urgent_tasks",
+          "ai_quota",
+          "modules_count"
+        ],
+        "title": "AcademicDashboardResponse",
+        "type": "object"
+      },
+      "AccountDeleteRequest": {
+        "description": "Shape of the body for account deletion (POPIA right-to-delete).\n\nSECURITY:\n- Requires the current password so a stolen/left-open session alone\n  cannot irreversibly deactivate an account.\n- Same bcrypt 72-byte guard as login/signup to prevent silent truncation\n  weakening credential checks.",
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "AccountDeleteRequest",
+        "type": "object"
+      },
+      "ActivityItem": {
+        "description": "One entry in the student's own recent-activity feed.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "event_type": {
+            "maxLength": 40,
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_code": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Code"
+          }
+        },
+        "required": [
+          "id",
+          "event_type"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
+      "ActivityResponse": {
+        "description": "The user's recent activity, newest first (bounded by the service).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ActivityResponse",
+        "type": "object"
+      },
+      "AtRiskResponse": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/RiskCounts"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/RiskSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/AtRiskTask"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "generated_at",
+          "horizon_days",
+          "counts",
+          "signals",
+          "tasks"
+        ],
+        "title": "AtRiskResponse",
+        "type": "object"
+      },
+      "AtRiskTask": {
+        "properties": {
+          "days_until_due": {
+            "title": "Days Until Due",
+            "type": "integer"
+          },
+          "due_date": {
+            "format": "date-time",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight_percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentage"
+          }
+        },
+        "required": [
+          "task_id",
+          "title",
+          "module_code",
+          "task_type",
+          "priority",
+          "due_date",
+          "level",
+          "reason",
+          "days_until_due"
+        ],
+        "title": "AtRiskTask",
+        "type": "object"
+      },
+      "BriefAnswerResponse": {
+        "properties": {
+          "ai_available": {
+            "title": "Ai Available",
+            "type": "boolean"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/BriefCitation"
+            },
+            "title": "Citations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "citations",
+          "ai_available"
+        ],
+        "title": "BriefAnswerResponse",
+        "type": "object"
+      },
+      "BriefAskRequest": {
+        "properties": {
+          "question": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "BriefAskRequest",
+        "type": "object"
+      },
+      "BriefCitation": {
+        "properties": {
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordinal",
+          "text"
+        ],
+        "title": "BriefCitation",
+        "type": "object"
+      },
+      "BriefCreateRequest": {
+        "description": "Ingest request. `content` is the already-extracted document text.",
+        "properties": {
+          "content": {
+            "maxLength": 200000,
+            "minLength": 20,
+            "title": "Content",
+            "type": "string"
+          },
+          "source_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_name",
+          "content"
+        ],
+        "title": "BriefCreateRequest",
+        "type": "object"
+      },
+      "BriefListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BriefResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BriefListResponse",
+        "type": "object"
+      },
+      "BriefResponse": {
+        "description": "A stored brief (metadata only — content is never echoed back in lists).",
+        "properties": {
+          "char_count": {
+            "title": "Char Count",
+            "type": "integer"
+          },
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_name",
+          "char_count",
+          "chunk_count"
+        ],
+        "title": "BriefResponse",
+        "type": "object"
+      },
+      "CoverageByModule": {
+        "description": "Per-module counts. Sorted total DESC, then module_code ASC.",
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "integer"
+          },
+          "last_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Updated At"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unapproved": {
+            "title": "Unapproved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "module_code",
+          "total",
+          "approved",
+          "unapproved",
+          "last_updated_at"
+        ],
+        "title": "CoverageByModule",
+        "type": "object"
+      },
+      "CoverageResponse": {
+        "description": "Bounded coverage report.\n\nBOTH lists are bounded by `size` independently, so the payload is O(size)\nregardless of how many modules or codes exist.",
+        "properties": {
+          "by_module": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageByModule"
+            },
+            "title": "By Module",
+            "type": "array"
+          },
+          "by_module_total": {
+            "title": "By Module Total",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "starved": {
+            "items": {
+              "$ref": "#/components/schemas/StarvedModule"
+            },
+            "title": "Starved",
+            "type": "array"
+          },
+          "starved_total": {
+            "title": "Starved Total",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CoverageSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "by_module",
+          "starved",
+          "page",
+          "size",
+          "by_module_total",
+          "starved_total"
+        ],
+        "title": "CoverageResponse",
+        "type": "object"
+      },
+      "CoverageSummary": {
+        "description": "Global counts.\n\nInvariants the service guarantees (and the tests assert):\n  approved + unapproved == total_materials\n  modules_with_materials == distinct module_code values in study_materials\n  starved_modules == number of distinct modules with no materials",
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "integer"
+          },
+          "modules_with_materials": {
+            "title": "Modules With Materials",
+            "type": "integer"
+          },
+          "starved_modules": {
+            "title": "Starved Modules",
+            "type": "integer"
+          },
+          "total_materials": {
+            "title": "Total Materials",
+            "type": "integer"
+          },
+          "unapproved": {
+            "title": "Unapproved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_materials",
+          "approved",
+          "unapproved",
+          "modules_with_materials",
+          "starved_modules"
+        ],
+        "title": "CoverageSummary",
+        "type": "object"
+      },
+      "FeedbackCreate": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "FeedbackCreate",
+        "type": "object"
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "rating",
+          "comment",
+          "created_at"
+        ],
+        "title": "FeedbackResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImportReport": {
+        "description": "Aggregate outcome of a dry-run or commit import.\n\nBounded by construction: `results` holds at most MAX_ROWS (500) entries,\neach ~200 B, so the serialized response stays well under ~100 KB.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "rejected_invalid": {
+            "title": "Rejected Invalid",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "skipped_duplicate": {
+            "title": "Skipped Duplicate",
+            "type": "integer"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dry_run",
+          "total_rows",
+          "created",
+          "updated",
+          "skipped_duplicate",
+          "rejected_invalid",
+          "results"
+        ],
+        "title": "ImportReport",
+        "type": "object"
+      },
+      "ImportRowResult": {
+        "description": "Outcome for a single row, whether or not it was written.",
+        "properties": {
+          "action": {
+            "enum": [
+              "created",
+              "updated",
+              "skipped_duplicate",
+              "rejected_invalid"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "module_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Code"
+          },
+          "row_number": {
+            "title": "Row Number",
+            "type": "integer"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "row_number",
+          "action"
+        ],
+        "title": "ImportRowResult",
+        "type": "object"
+      },
+      "IngestResult": {
+        "description": "Outcome of an on-demand resource fetch for one of the caller's modules.\n\nThe endpoint takes no user-supplied URL: only the module code, which must\nbelong to the caller. See material_ingest_service for the SSRF design.",
+        "properties": {
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "skipped": {
+            "default": false,
+            "title": "Skipped",
+            "type": "boolean"
+          },
+          "topics": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "module_code",
+          "inserted",
+          "updated",
+          "total",
+          "message"
+        ],
+        "title": "IngestResult",
+        "type": "object"
+      },
+      "LinkFetchRequest": {
+        "description": "Ask the server to read a web page so it can be summarised.\n\nOnly the URL is accepted; the server fetches it itself under a strict SSRF\npolicy (see link_fetch_service). No other field would be safe to expose.",
+        "properties": {
+          "url": {
+            "maxLength": 2000,
+            "minLength": 4,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "LinkFetchRequest",
+        "type": "object"
+      },
+      "LinkFetchResponse": {
+        "description": "The readable text extracted from a page, ready to summarise.",
+        "properties": {
+          "characters": {
+            "title": "Characters",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "text",
+          "characters"
+        ],
+        "title": "LinkFetchResponse",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "description": "Shape of the login request body.\n\nSECURITY:\n- Only email + password accepted (anything else gets dropped)\n- EmailStr validates email format\n- The byte-length validator guarantees the submitted password fits\n  within bcrypt's 72-byte limit (see enforce_bcrypt_byte_limit) so no\n  silent truncation can weaken or confuse credential verification.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "MaterialAdminCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_approved": {
+            "default": true,
+            "title": "Is Approved",
+            "type": "boolean"
+          },
+          "module_code": {
+            "maxLength": 20,
+            "minLength": 2,
+            "title": "Module Code",
+            "type": "string"
+          },
+          "quality_resolution": {
+            "default": "360p",
+            "maxLength": 10,
+            "title": "Quality Resolution",
+            "type": "string"
+          },
+          "resource_type": {
+            "enum": [
+              "YOUTUBE",
+              "JOURNAL",
+              "PDF",
+              "ARTICLE"
+            ],
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_code",
+          "title",
+          "url",
+          "resource_type"
+        ],
+        "title": "MaterialAdminCreate",
+        "type": "object"
+      },
+      "MaterialAdminResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By User Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_approved": {
+            "title": "Is Approved",
+            "type": "boolean"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "quality_resolution": {
+            "title": "Quality Resolution",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "module_code",
+          "title",
+          "description",
+          "url",
+          "resource_type",
+          "quality_resolution",
+          "is_approved",
+          "created_by_user_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MaterialAdminResponse",
+        "type": "object"
+      },
+      "MaterialAdminUpdate": {
+        "description": "All fields optional — PATCH semantics (only sent fields are changed).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Approved"
+          },
+          "quality_resolution": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Resolution"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "YOUTUBE",
+                  "JOURNAL",
+                  "PDF",
+                  "ARTICLE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "MaterialAdminUpdate",
+        "type": "object"
+      },
+      "MaterialResponse": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "quality_resolution": {
+            "title": "Quality Resolution",
+            "type": "string"
+          },
+          "relevance_score": {
+            "default": 0,
+            "title": "Relevance Score",
+            "type": "integer"
+          },
+          "resource_type": {
+            "enum": [
+              "YOUTUBE",
+              "JOURNAL",
+              "PDF",
+              "ARTICLE"
+            ],
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "module_code",
+          "title",
+          "url",
+          "resource_type",
+          "quality_resolution"
+        ],
+        "title": "MaterialResponse",
+        "type": "object"
+      },
+      "MetricsResponse": {
+        "description": "Admin-gated aggregate readout (no PII; counts + rates only).",
+        "properties": {
+          "active_users": {
+            "title": "Active Users",
+            "type": "integer"
+          },
+          "avg_feedback_rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Feedback Rating"
+          },
+          "cache_hit_rate": {
+            "title": "Cache Hit Rate",
+            "type": "number"
+          },
+          "estimated_cost_zar": {
+            "title": "Estimated Cost Zar",
+            "type": "number"
+          },
+          "period_end": {
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "title": "Period Start",
+            "type": "string"
+          },
+          "share_conversion_rate": {
+            "title": "Share Conversion Rate",
+            "type": "number"
+          },
+          "shares_count": {
+            "title": "Shares Count",
+            "type": "integer"
+          },
+          "summarize_p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summarize P50 Ms"
+          },
+          "summarize_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summarize P95 Ms"
+          },
+          "sync_push_p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Push P50 Ms"
+          },
+          "sync_push_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Push P95 Ms"
+          },
+          "total_dashboard_views": {
+            "title": "Total Dashboard Views",
+            "type": "integer"
+          },
+          "total_materials_searches": {
+            "title": "Total Materials Searches",
+            "type": "integer"
+          },
+          "total_summaries": {
+            "title": "Total Summaries",
+            "type": "integer"
+          },
+          "total_sync_pushes": {
+            "title": "Total Sync Pushes",
+            "type": "integer"
+          },
+          "total_tokens_used": {
+            "title": "Total Tokens Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "active_users",
+          "total_summaries",
+          "cache_hit_rate",
+          "total_materials_searches",
+          "total_sync_pushes",
+          "total_dashboard_views",
+          "avg_feedback_rating",
+          "total_tokens_used",
+          "estimated_cost_zar",
+          "shares_count",
+          "share_conversion_rate",
+          "summarize_p50_ms",
+          "summarize_p95_ms",
+          "sync_push_p50_ms",
+          "sync_push_p95_ms"
+        ],
+        "title": "MetricsResponse",
+        "type": "object"
+      },
+      "ModuleCreate": {
+        "properties": {
+          "code": {
+            "maxLength": 20,
+            "minLength": 2,
+            "title": "Code",
+            "type": "string"
+          },
+          "color_code": {
+            "default": "#2563eb",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color Code",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "ModuleCreate",
+        "type": "object"
+      },
+      "ModuleRecommendationsResponse": {
+        "description": "AI brief + the module's real library items.",
+        "properties": {
+          "ai_available": {
+            "title": "Ai Available",
+            "type": "boolean"
+          },
+          "ai_brief": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Brief"
+          },
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendedMaterial"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "module_name": {
+            "title": "Module Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_code",
+          "module_name",
+          "ai_available",
+          "cached",
+          "materials"
+        ],
+        "title": "ModuleRecommendationsResponse",
+        "type": "object"
+      },
+      "ModuleResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "color_code": {
+            "title": "Color Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "code",
+          "name",
+          "color_code",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ModuleResponse",
+        "type": "object"
+      },
+      "ModuleSyncItem": {
+        "properties": {
+          "code": {
+            "maxLength": 20,
+            "minLength": 2,
+            "title": "Code",
+            "type": "string"
+          },
+          "color_code": {
+            "default": "#2563eb",
+            "maxLength": 7,
+            "title": "Color Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "updated_at",
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ModuleSyncItem",
+        "type": "object"
+      },
+      "PaginatedResponse_MaterialAdminResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialAdminResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[MaterialAdminResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_MaterialResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[MaterialResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_TaskResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[TaskResponse]",
+        "type": "object"
+      },
+      "PurgeResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "purged_count": {
+            "title": "Purged Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "purged_count"
+        ],
+        "title": "PurgeResponse",
+        "type": "object"
+      },
+      "RecommendedMaterial": {
+        "description": "A real library item attached to a recommendation (never invented).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "resource_type"
+        ],
+        "title": "RecommendedMaterial",
+        "type": "object"
+      },
+      "RiskCounts": {
+        "properties": {
+          "critical": {
+            "title": "Critical",
+            "type": "integer"
+          },
+          "high": {
+            "title": "High",
+            "type": "integer"
+          },
+          "medium": {
+            "title": "Medium",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "critical",
+          "high",
+          "medium",
+          "total"
+        ],
+        "title": "RiskCounts",
+        "type": "object"
+      },
+      "RiskSignal": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "level",
+          "message"
+        ],
+        "title": "RiskSignal",
+        "type": "object"
+      },
+      "ShareEventRequest": {
+        "properties": {
+          "module_code": {
+            "maxLength": 20,
+            "minLength": 2,
+            "title": "Module Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_code"
+        ],
+        "title": "ShareEventRequest",
+        "type": "object"
+      },
+      "StarvedModule": {
+        "description": "A module students are enrolled in that has zero study materials.\n\n`module_code` is the code students typed; `module_name` is the name they\ngave it (the primary identifier per the product rules), which may be None\nfor a legacy row created before names were required.",
+        "properties": {
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "module_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Name"
+          }
+        },
+        "required": [
+          "module_code",
+          "module_name"
+        ],
+        "title": "StarvedModule",
+        "type": "object"
+      },
+      "SummaryHistoryItem": {
+        "description": "One cached summary in the user's history (preview only).",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_code": {
+            "title": "Module Code",
+            "type": "string"
+          },
+          "preview": {
+            "title": "Preview",
+            "type": "string"
+          },
+          "tokens_used": {
+            "title": "Tokens Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "module_code",
+          "preview",
+          "tokens_used"
+        ],
+        "title": "SummaryHistoryItem",
+        "type": "object"
+      },
+      "SummaryHistoryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SummaryHistoryResponse",
+        "type": "object"
+      },
+      "SyncPullResponse": {
+        "properties": {
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleSyncItem"
+            },
+            "title": "Modules",
+            "type": "array"
+          },
+          "server_timestamp": {
+            "format": "date-time",
+            "title": "Server Timestamp",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSyncItem"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "timetable_slots": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotSyncItem"
+            },
+            "title": "Timetable Slots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_timestamp",
+          "tasks",
+          "modules",
+          "timetable_slots"
+        ],
+        "title": "SyncPullResponse",
+        "type": "object"
+      },
+      "SyncPushRequest": {
+        "properties": {
+          "client_duration_ms": {
+            "anyOf": [
+              {
+                "maximum": 600000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Duration Ms"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleSyncItem"
+            },
+            "maxItems": 100,
+            "title": "Modules",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSyncItem"
+            },
+            "maxItems": 100,
+            "title": "Tasks",
+            "type": "array"
+          },
+          "timetable_slots": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotSyncItem"
+            },
+            "maxItems": 100,
+            "title": "Timetable Slots",
+            "type": "array"
+          }
+        },
+        "title": "SyncPushRequest",
+        "type": "object"
+      },
+      "TaskCreate": {
+        "properties": {
+          "due_date": {
+            "format": "date-time",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "priority": {
+            "default": "MEDIUM",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "task_type": {
+            "default": "ASSIGNMENT",
+            "enum": [
+              "ASSIGNMENT",
+              "EXAM",
+              "TEST",
+              "QUIZ"
+            ],
+            "title": "Task Type",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Title",
+            "type": "string"
+          },
+          "weight_percentage": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentage"
+          }
+        },
+        "required": [
+          "module_id",
+          "title",
+          "due_date"
+        ],
+        "title": "TaskCreate",
+        "type": "object"
+      },
+      "TaskResponse": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date-time",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_completed": {
+            "title": "Is Completed",
+            "type": "boolean"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "weight_percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentage"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "module_id",
+          "title",
+          "task_type",
+          "due_date",
+          "priority",
+          "weight_percentage",
+          "is_completed",
+          "completed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaskResponse",
+        "type": "object"
+      },
+      "TaskSyncItem": {
+        "properties": {
+          "due_date": {
+            "format": "date-time",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_completed": {
+            "default": false,
+            "title": "Is Completed",
+            "type": "boolean"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "priority": {
+            "default": "MEDIUM",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "task_type": {
+            "default": "ASSIGNMENT",
+            "enum": [
+              "ASSIGNMENT",
+              "EXAM",
+              "TEST",
+              "QUIZ"
+            ],
+            "title": "Task Type",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "weight_percentage": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentage"
+          }
+        },
+        "required": [
+          "updated_at",
+          "id",
+          "module_id",
+          "title",
+          "due_date"
+        ],
+        "title": "TaskSyncItem",
+        "type": "object"
+      },
+      "TaskUpdateStatus": {
+        "properties": {
+          "is_completed": {
+            "title": "Is Completed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_completed"
+        ],
+        "title": "TaskUpdateStatus",
+        "type": "object"
+      },
+      "TimetableSlotCreate": {
+        "properties": {
+          "day_of_week": {
+            "description": "1=Monday, 7=Sunday",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Day Of Week",
+            "type": "integer"
+          },
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue"
+          }
+        },
+        "required": [
+          "module_id",
+          "day_of_week",
+          "start_time",
+          "end_time"
+        ],
+        "title": "TimetableSlotCreate",
+        "type": "object"
+      },
+      "TimetableSlotResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "day_of_week": {
+            "title": "Day Of Week",
+            "type": "integer"
+          },
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "module_id",
+          "day_of_week",
+          "start_time",
+          "end_time",
+          "venue",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TimetableSlotResponse",
+        "type": "object"
+      },
+      "TimetableSlotSyncItem": {
+        "properties": {
+          "day_of_week": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Day Of Week",
+            "type": "integer"
+          },
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_id": {
+            "format": "uuid",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue"
+          }
+        },
+        "required": [
+          "updated_at",
+          "id",
+          "module_id",
+          "day_of_week",
+          "start_time",
+          "end_time"
+        ],
+        "title": "TimetableSlotSyncItem",
+        "type": "object"
+      },
+      "UserCreate": {
+        "description": "Shape of the data required to sign up.\n\nSECURITY NOTES:\n- EmailStr validates email format before reaching our code\n- password: min_length=8 rejects weak passwords early\n- All string fields are XSS-sanitized (strip HTML tags/scripts)\n- terms_version and privacy_version are validated STRICTLY against\n  CURRENT_*_VERSION constants - users cannot bypass consent by\n  sending an arbitrary version string\n- No 'is_active', 'role', or any internal field is accepted here",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "field_of_study": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Of Study"
+          },
+          "full_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "privacy_version": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Privacy Version",
+            "type": "string"
+          },
+          "terms_version": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Terms Version",
+            "type": "string"
+          },
+          "university": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "University"
+          },
+          "year_of_study": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Of Study"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "full_name",
+          "terms_version",
+          "privacy_version"
+        ],
+        "title": "UserCreate",
+        "type": "object"
+      },
+      "UserQuotaResponse": {
+        "properties": {
+          "daily_limit": {
+            "title": "Daily Limit",
+            "type": "integer"
+          },
+          "remaining_credits": {
+            "title": "Remaining Credits",
+            "type": "integer"
+          },
+          "summaries_used": {
+            "title": "Summaries Used",
+            "type": "integer"
+          },
+          "usage_date": {
+            "title": "Usage Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "usage_date",
+          "summaries_used",
+          "daily_limit",
+          "remaining_credits"
+        ],
+        "title": "UserQuotaResponse",
+        "type": "object"
+      },
+      "UserResponse": {
+        "description": "Shape of the data sent BACK to the client after signup/login.\n\nSECURITY:\n- Deliberately EXCLUDES hashed_password entirely\n- Deliberately EXCLUDES consent version metadata (internal compliance data)\n- Only exposes fields the frontend actually needs",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "field_of_study": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Of Study"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "university": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "University"
+          },
+          "year_of_study": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Of Study"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "is_active",
+          "role",
+          "created_at"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Backend API for the Varsity Companion academy platform.",
+    "title": "Varsity Companion API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "Root endpoint - confirms the server is running.\n\nSECURITY: Only returns environment name (not full settings).\nNever expose database URLs, secrets, or internal paths here.",
+        "operationId": "read_root__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Root",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/academic/at-risk": {
+      "get": {
+        "description": "Return the caller's at-risk deadlines and workload signals.\n\nPure heuristics (no LLM): deterministic, instant and free. `days` bounds the\nlook-ahead window and is clamped by the service to 1..30.",
+        "operationId": "get_at_risk_tasks_api_v1_academic_at_risk_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 14,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtRiskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get At Risk Tasks",
+        "tags": [
+          "Academic Tracker Engine"
+        ]
+      }
+    },
+    "/api/v1/academic/dashboard": {
+      "get": {
+        "description": "Return the caller's unified daily academic status payload.",
+        "operationId": "get_academic_dashboard_api_v1_academic_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicDashboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Academic Dashboard",
+        "tags": [
+          "Academic Tracker Engine"
+        ]
+      }
+    },
+    "/api/v1/academic/modules": {
+      "get": {
+        "description": "List modules belonging to the authenticated user (scoped).",
+        "operationId": "list_modules_api_v1_academic_modules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModuleResponse"
+                  },
+                  "title": "Response List Modules Api V1 Academic Modules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Modules",
+        "tags": [
+          "Academic Tracker"
+        ]
+      },
+      "post": {
+        "description": "Create a module for the authenticated user.",
+        "operationId": "create_module_api_v1_academic_modules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Module",
+        "tags": [
+          "Academic Tracker"
+        ]
+      }
+    },
+    "/api/v1/academic/modules/{module_id}": {
+      "delete": {
+        "description": "Delete a module ONLY if it belongs to the authenticated user.",
+        "operationId": "delete_module_api_v1_academic_modules__module_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "module_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Module Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Module",
+        "tags": [
+          "Academic Tracker"
+        ]
+      }
+    },
+    "/api/v1/academic/tasks": {
+      "get": {
+        "description": "Paginated, filterable task list for the authenticated user.",
+        "operationId": "list_tasks_api_v1_academic_tasks_get",
+        "parameters": [
+          {
+            "description": "Page number",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Page number",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items per page",
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Items per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "module_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Module Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_completed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Completed"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "LOW",
+                    "MEDIUM",
+                    "HIGH",
+                    "CRITICAL"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority"
+            }
+          },
+          {
+            "in": "query",
+            "name": "task_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ASSIGNMENT",
+                    "EXAM",
+                    "TEST",
+                    "QUIZ"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_TaskResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tasks",
+        "tags": [
+          "Academic Tracker"
+        ]
+      },
+      "post": {
+        "description": "Log a new assignment, exam, test, or quiz.",
+        "operationId": "create_task_api_v1_academic_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Task",
+        "tags": [
+          "Academic Tracker"
+        ]
+      }
+    },
+    "/api/v1/academic/tasks/{task_id}/complete": {
+      "patch": {
+        "description": "Update the completion status of a task (sets/clears completed_at).",
+        "operationId": "update_task_status_api_v1_academic_tasks__task_id__complete_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateStatus"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Task Status",
+        "tags": [
+          "Academic Tracker"
+        ]
+      }
+    },
+    "/api/v1/academic/timetable": {
+      "get": {
+        "description": "Weekly timetable for the authenticated user (sorted day, then start).",
+        "operationId": "list_timetable_api_v1_academic_timetable_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TimetableSlotResponse"
+                  },
+                  "title": "Response List Timetable Api V1 Academic Timetable Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Timetable",
+        "tags": [
+          "Academic Tracker"
+        ]
+      },
+      "post": {
+        "description": "Log a new class slot in the authenticated user's timetable.",
+        "operationId": "create_timetable_slot_api_v1_academic_timetable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimetableSlotCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableSlotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Timetable Slot",
+        "tags": [
+          "Academic Tracker"
+        ]
+      }
+    },
+    "/api/v1/admin/materials": {
+      "get": {
+        "operationId": "admin_list_materials_api_v1_admin_materials_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "module_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Module Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_approved",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Approved"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Resource Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MaterialAdminResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: list all materials (incl. unapproved), paginated",
+        "tags": [
+          "Admin"
+        ]
+      },
+      "post": {
+        "description": "Create a material (default is_approved=True).",
+        "operationId": "admin_create_material_api_v1_admin_materials_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialAdminCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialAdminResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: create a study material",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/coverage": {
+      "get": {
+        "description": "Read-only coverage report over the global materials library.\n\nDECLARATION ORDER MATTERS: this route is declared ABOVE\n`/materials/{material_id}`. FastAPI matches routes in declaration order, so\nif the dynamic route came first, `/materials/coverage` would be captured as\n`material_id=\"coverage\"` and fail UUID validation with a 422 - a confusing\nerror for what is really \"the static route is in the wrong place\".\n\nBoth lists are independently bounded by `size` (max 100), so the response\nstays small however many modules exist.",
+        "operationId": "admin_materials_coverage_api_v1_admin_materials_coverage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: materials coverage by module, including starved modules",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/import": {
+      "post": {
+        "description": "Bulk-import study_materials from CSV or JSON.\n\n- Dry-run (`?dry_run=true`) validates + reports WITHOUT writing anything.\n- Commit (default) applies all non-rejected rows in ONE transaction.\n\nContent-Type must be `text/csv` or `application/json`. Max 500 rows per\nrequest and a 1 MB body cap are enforced here (defence in depth: the\nrequest-size middleware grants this route a matching 1 MB exemption;\nevery other route keeps the global 10 KB guard).\n\nDuplicate is defined as `(module_code, url)`. `on_duplicate` controls\nbehaviour: `update` (default), `skip`, or `fail` (all-or-nothing 409).\n\nRegistered as `async` because the raw body must be read directly\n(`await request.body()`) to honour both the Content-Type router and the\nexplicit 1 MB cap BEFORE FastAPI/Pydantic parsing.",
+        "operationId": "admin_import_materials_api_v1_admin_materials_import_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "on_duplicate",
+            "required": false,
+            "schema": {
+              "default": "update",
+              "enum": [
+                "update",
+                "skip",
+                "fail"
+              ],
+              "title": "On Duplicate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: bulk-import materials from CSV or JSON (with dry-run)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/materials/{material_id}": {
+      "delete": {
+        "operationId": "admin_delete_material_api_v1_admin_materials__material_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Material Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: hard-delete a material (rare; prefer unapprove)",
+        "tags": [
+          "Admin"
+        ]
+      },
+      "patch": {
+        "description": "PATCH semantics — only sent fields are changed.",
+        "operationId": "admin_update_material_api_v1_admin_materials__material_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Material Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialAdminUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialAdminResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin: update or unapprove a material",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/metrics": {
+      "get": {
+        "description": "Daily/weekly usage readout: WAU, summaries, cache hit rate, cost.",
+        "operationId": "get_metrics_api_v1_admin_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Aggregate product usage metrics (no PII)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/purge-deleted-users": {
+      "post": {
+        "description": "Manually trigger physical erasure of expired soft-deleted accounts.",
+        "operationId": "trigger_popia_purge_api_v1_admin_purge_deleted_users_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurgeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Purge soft-deleted accounts past eligibility date",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/ai/briefs": {
+      "get": {
+        "description": "List the caller's briefs (metadata only), newest first.",
+        "operationId": "list_my_briefs_api_v1_ai_briefs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List My Briefs",
+        "tags": [
+          "AI Engine"
+        ]
+      },
+      "post": {
+        "description": "Store a brief (already-extracted text) and chunk it for retrieval.",
+        "operationId": "create_brief_api_v1_ai_briefs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Brief",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/briefs/{brief_id}/ask": {
+      "post": {
+        "description": "Answer a question about one of the caller's briefs, with citations.",
+        "operationId": "ask_my_brief_api_v1_ai_briefs__brief_id__ask_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brief_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Brief Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefAskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefAnswerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask My Brief",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/fetch-link": {
+      "post": {
+        "description": "Read a web page and return its text so the student can summarise it.\n\nThe student supplies a link because they found the reading themselves; we\nfetch the CONTENT of it on their behalf. This is the one endpoint that makes\na server-side request to a user-supplied destination, so it is deliberately\nnarrow:\n\n  * the URL is validated and resolved, and private/loopback/link-local\n    addresses are refused (SSRF defence, see link_fetch_service),\n  * redirects are followed manually so every hop is re-checked,\n  * rate limited per client, because it is an outbound request.\n\nReturns 400 with a student-readable reason when the page cannot be read.",
+        "operationId": "fetch_link_api_v1_ai_fetch_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkFetchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkFetchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fetch Link",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/modules/{module_code}/recommendations": {
+      "get": {
+        "description": "AI study brief for a module + the module's real library items.\n\nThe module must belong to the caller (we take its full NAME from the user's\nown module record — the name is the primary identifier per product rules).\nReturns 404 for a module the user does not own, so module ownership is never\nleaked.",
+        "operationId": "module_recommendations_api_v1_ai_modules__module_code__recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "module_code",
+            "required": true,
+            "schema": {
+              "title": "Module Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleRecommendationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Module Recommendations",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/quota": {
+      "get": {
+        "description": "Return the caller's AI free-tier usage for today.",
+        "operationId": "read_quota_api_v1_ai_quota_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserQuotaResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Quota",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/summaries": {
+      "get": {
+        "description": "Return the current user's summary history (newest first, previews only).",
+        "operationId": "list_my_summaries_api_v1_ai_summaries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List My Summaries",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/ai/summarize": {
+      "post": {
+        "description": "Generate or retrieve a course-aware AI summary.\n\n- Identical (module, content) for the same user returns a cached summary\n  without spending a credit.\n- Otherwise one daily credit is atomically claimed and Gemini is called.",
+        "operationId": "request_ai_summary_api_v1_ai_summarize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AISummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AISummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Ai Summary",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
+    "/api/v1/analytics/activity": {
+      "get": {
+        "description": "Return the current user's own recent activity (newest first).\n\nStrictly scoped to the authenticated user. `limit` is clamped in the\nservice (1..50) so the response stays bounded.",
+        "operationId": "get_my_activity_api_v1_analytics_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get My Activity",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    },
+    "/api/v1/analytics/feedback": {
+      "post": {
+        "description": "Submit a 1-5 usefulness rating (optional short comment).",
+        "operationId": "submit_feedback_api_v1_analytics_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Feedback",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    },
+    "/api/v1/analytics/share": {
+      "post": {
+        "description": "Record a module share (client fired the OS share sheet). 204 — the\nclient sent a signal and moved on; no body needed.",
+        "operationId": "record_share_api_v1_analytics_share_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Share",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    },
+    "/api/v1/auth/account": {
+      "delete": {
+        "description": "Soft-deletes the authenticated account. Requires the current password as re-authentication. Marks the user inactive with a deleted_at tombstone and scrubs the stored credential. The auth cookie is cleared so the session ends immediately. Role-restricted: STUDENT and ADMIN may self-deactivate.",
+        "operationId": "delete_account_api_v1_auth_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Account deactivated"
+          },
+          "401": {
+            "description": "Wrong password / not authenticated"
+          },
+          "403": {
+            "description": "Operation not permitted (role)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many attempts"
+          }
+        },
+        "summary": "Deactivate your own account (POPIA right-to-delete baseline)",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Authenticates a user. Always sets an HttpOnly+SameSite=Lax cookie. By default returns user metadata only (browser-safe). If the request sends the exact header `X-Auth-Mode: api`, the body ALSO includes the raw JWT for `Authorization: Bearer` authentication by mobile/API clients.",
+        "operationId": "login_api_v1_auth_login_post",
+        "parameters": [
+          {
+            "description": "Set to the EXACT lowercase value 'api' for mobile/API clients to receive the raw JWT in the response body. Browsers must OMIT this header and use the HttpOnly cookie instead. Matching is strict and case-sensitive.",
+            "in": "header",
+            "name": "x-auth-mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Set to the EXACT lowercase value 'api' for mobile/API clients to receive the raw JWT in the response body. Browsers must OMIT this header and use the HttpOnly cookie instead. Matching is strict and case-sensitive.",
+              "title": "X-Auth-Mode"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful login"
+          },
+          "401": {
+            "description": "Invalid credentials or inactive account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many login attempts"
+          }
+        },
+        "summary": "Log in and receive access credentials",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Idempotent sign-out. Clears the HttpOnly access cookie so shared or public machines don't carry a reusable login.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Signed out; cookie cleared"
+          },
+          "429": {
+            "description": "Too many requests"
+          }
+        },
+        "summary": "Sign out and clear the auth cookie",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Returns the authenticated user's profile. Requires a valid JWT.",
+        "operationId": "read_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get the currently authenticated user",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/signup": {
+      "post": {
+        "description": "Registers a user, hashes password via bcrypt, records POPIA legal consent.",
+        "operationId": "signup_api_v1_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register a new student account",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/materials/modules/{module_code}": {
+      "get": {
+        "description": "List all approved materials for a module.",
+        "operationId": "list_module_materials_api_v1_materials_modules__module_code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "module_code",
+            "required": true,
+            "schema": {
+              "title": "Module Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MaterialResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Module Materials",
+        "tags": [
+          "Study Materials"
+        ]
+      }
+    },
+    "/api/v1/materials/modules/{module_code}/ingest": {
+      "post": {
+        "description": "Find and store real resources for one of the caller's own modules.\n\nThe student types a module in themselves (never auto-filled); this endpoint\nonly goes and finds resources FOR that module. It accepts no URL, so the\nserver never fetches a destination supplied by the caller.\n\nReturns 404 when the module is not the caller's, and 429 when a fetch for\nthe same module is already running (protects the upstream APIs).",
+        "operationId": "ingest_module_resources_api_v1_materials_modules__module_code__ingest_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "module_code",
+            "required": true,
+            "schema": {
+              "title": "Module Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Module Resources",
+        "tags": [
+          "Study Materials"
+        ]
+      }
+    },
+    "/api/v1/materials/search": {
+      "get": {
+        "description": "Search curated, low-data study materials scoped to a module.\n\nRanked by default: an exact title match outranks a title prefix, which\noutranks a title substring, which outranks a description match. The rule is\ndeterministic and documented in `material_service._score_material`.",
+        "operationId": "search_materials_api_v1_materials_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "module_code",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "minLength": 2,
+              "title": "Module Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "YOUTUBE",
+                    "JOURNAL",
+                    "PDF",
+                    "ARTICLE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Resource Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "relevance",
+              "enum": [
+                "relevance",
+                "recent",
+                "title"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MaterialResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Materials",
+        "tags": [
+          "Study Materials"
+        ]
+      }
+    },
+    "/api/v1/sync/pull": {
+      "get": {
+        "description": "Return records changed after `since` for offline caching.",
+        "operationId": "pull_delta_changes_api_v1_sync_pull_get",
+        "parameters": [
+          {
+            "description": "UTC timestamp of last sync",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UTC timestamp of last sync",
+              "title": "Since"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPullResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pull Delta Changes",
+        "tags": [
+          "Offline Sync Core"
+        ]
+      }
+    },
+    "/api/v1/sync/push": {
+      "post": {
+        "description": "Apply offline changes. Raises 403 on cross-tenant id/module violations\n(never mutates another user's rows).",
+        "operationId": "push_offline_changes_api_v1_sync_push_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push Offline Changes",
+        "tags": [
+          "Offline Sync Core"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Health check endpoint for load balancers / Kubernetes probes.\nExecutes SELECT 1 to verify database connectivity.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check",
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  }
+}

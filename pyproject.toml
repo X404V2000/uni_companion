@@ -1,0 +1,61 @@
+# pyproject.toml
+#
+# Tooling configuration for the Varsity Companion API.
+#
+# We pin the LEGACY runtime target to the version we actually develop and
+# deploy on (Python 3.13) rather than the blueprint's illustrative 3.11, so
+# CI parity matches production and ruff's suggested syntax stays valid.
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "alembic/versions",
+]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = import sorting, B = bugbear,
+# UP = pyupgrade, S = flake8-bandit (security lint).
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = [
+    # S101: bare assert — pytest tests legitimately use assert.
+    "S101",
+    # B008: FastAPI requires function calls (Depends(), Query(), etc.) in
+    # default arguments. This is the framework's documented dependency-
+    # injection pattern, not the bug the rule targets.
+    "B008",
+    # S105: false positive on non-secret string constants whose NAME contains
+    # a secret-ish word (e.g. ACCESS_TOKEN_COOKIE_NAME = "access_token" — a
+    # cookie name, not a credential).
+    "S105",
+    # S106: false positive on literal function arguments such as
+    # token_type="bearer" (the OAuth token type, not a password).
+    "S106",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may use bandit-flagged patterns (e.g. hardcoded test credentials,
+# non-cryptographic randomness for fixtures) without tripping the production
+# security lint.
+"tests/**" = ["S311", "E501"]
+
+[tool.pytest.ini_options]
+# Coverage is measured against the application, not the tests themselves.
+addopts = "-q --cov=app --cov-report=term-missing"
+testpaths = ["tests"]
+# Make the project root importable so `tests/conftest.py` can do
+# `from app.core.config import settings` regardless of the shell's CWD or
+# PYTHONPATH. Without this, pytest added `tests/` (or the CWD) to sys.path but
+# NOT the repo root, so CI's `pytest -q` failed with
+# `ModuleNotFoundError: No module named 'app'` (exit code 4, zero tests run).
+# `.` is resolved relative to pytest's rootdir, so it stays correct from any
+# working directory. (pytest >= 7.0 supports this key; this project pins 8.3.3.)
+pythonpath = ["."]
+

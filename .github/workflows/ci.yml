@@ -1,0 +1,124 @@
+# .github/workflows/ci.yml
+#
+# Varsity Companion CI Pipeline
+# ---------------------------------------------------------------------------
+# Runs on every push / PR to `main` and `develop`:
+#   * `test`   — lint, alembic migrate, pytest (against ephemeral Postgres 15).
+#   * `docker` — build the production image; assert size < 150 MB and a
+#                non-root runtime user (OWASP container security).
+#
+# The database name deliberately matches the project's canonical test DB
+# (`varsity_companion_test`, requires the `_test` suffix) so CI and local runs
+# exercise the exact same code paths and conftest safety guard.
+name: Varsity Companion CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Lint, Migrate & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: varsity_companion_test
+        ports:
+          - 5432:5432
+        # Wait until Postgres is actually ready before the job proceeds.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Dedicated CI mode: hardened like production (docs off, Secure cookies)
+      # but without HSTS. See app/core/config.py.
+      ENVIRONMENT: testing
+      # Explicit `postgresql+psycopg://` (psycopg v3) — the bare
+      # `postgresql://` scheme resolves to the legacy `psycopg2` driver,
+      # which is not installed, and crashes any `app.*` import (e.g. the
+      # OpenAPI exporter) with `ModuleNotFoundError: No module named 'psycopg2'`.
+      DATABASE_URL: postgresql+psycopg://test_user:test_password@localhost:5432/varsity_companion_test
+      TEST_DATABASE_URL: postgresql+psycopg://test_user:test_password@localhost:5432/varsity_companion_test
+      # CI-only signing secret. Never used outside the pipeline.
+      JWT_SECRET_KEY: ci-testing-super-secret-key-min-32-chars-long
+      # Containers have no writable log volume; stdout only.
+      LOG_TO_FILE: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Lint with ruff
+        run: |
+          ruff check app/ tests/ scripts/
+
+      - name: Verify OpenAPI contract is in sync
+        run: |
+          python scripts/export_openapi.py /tmp/openapi.fresh.json
+          if ! diff -q /tmp/openapi.fresh.json docs/openapi.json; then
+            echo "::error::docs/openapi.json is stale. Regenerate and commit."
+            diff -u docs/openapi.json /tmp/openapi.fresh.json | head -n 80
+            exit 1
+          fi
+
+      - name: Apply Alembic migrations
+        run: |
+          alembic upgrade head
+
+      - name: Run test suite
+        run: |
+          pytest -q
+
+  docker:
+    name: Build & Verify Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        run: |
+          docker build -t varsity-companion-api .
+
+      - name: Assert image size < 150 MB
+        run: |
+          SIZE=$(docker image inspect varsity-companion-api --format '{{.Size}}')
+          BYTES=$((SIZE))
+          MB=$((BYTES / 1024 / 1024))
+          echo "Image size: ${MB} MB (${BYTES} bytes)"
+          if [ "$MB" -ge 150 ]; then
+            echo "::error::Image is ${MB} MB, exceeding the 150 MB budget."
+            exit 1
+          fi
+
+      - name: Assert non-root runtime user
+        id: whoami
+        run: |
+          USER_NAME=$(docker run --rm --entrypoint whoami varsity-companion-api)
+          echo "Runtime user: ${USER_NAME}"
+          if [ "$USER_NAME" != "appuser" ]; then
+            echo "::error::Runtime user is '${USER_NAME}', must be 'appuser' (non-root)."
+            exit 1
+          fi

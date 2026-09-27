@@ -1,0 +1,146 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: #162a3a;
+  background: #f7f8f5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.font-display {
+  font-family: "Manrope", sans-serif;
+}
+
+.logo-mark {
+  position: relative;
+  width: 35px;
+  height: 35px;
+  border-radius: 11px;
+  background: #173c46;
+  overflow: hidden;
+}
+
+.logo-mark span {
+  position: absolute;
+  bottom: 7px;
+  width: 5px;
+  border-radius: 4px;
+  background: #f5f1e8;
+  transform: rotate(36deg);
+}
+
+.logo-mark span:nth-child(1) {
+  left: 8px;
+  height: 13px;
+}
+
+.logo-mark span:nth-child(2) {
+  left: 15px;
+  height: 19px;
+  background: #eb765b;
+}
+
+.logo-mark span:nth-child(3) {
+  left: 22px;
+  height: 25px;
+  background: #66b4a8;
+}
+
+.hero-card::after {
+  content: "";
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  right: -80px;
+  top: -100px;
+  border: 54px solid rgba(110, 182, 170, 0.11);
+  border-radius: 50%;
+}
+
+.hero-card::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: 100px;
+  bottom: -135px;
+  border: 38px solid rgba(235, 118, 91, 0.09);
+  border-radius: 50%;
+}
+
+.auth-orbit {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.auth-orbit-one {
+  width: 520px;
+  height: 520px;
+  top: -230px;
+  right: -240px;
+  border: 82px solid rgba(102, 180, 168, 0.09);
+}
+
+.auth-orbit-two {
+  width: 340px;
+  height: 340px;
+  bottom: -210px;
+  left: -130px;
+  border: 56px solid rgba(235, 118, 91, 0.07);
+}
+
+.module-card {
+  position: relative;
+}
+
+.module-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--module-color);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.module-card:hover::before {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .hero-card::after {
+    width: 220px;
+    height: 220px;
+    right: -100px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

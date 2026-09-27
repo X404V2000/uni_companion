@@ -1,0 +1,138 @@
+### Month 2 Roadmap Overview (Core Loop & Contract Freeze)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          MONTH 2 EXECUTION PLAN                         │
+├───────────────────┬─────────────────────────────────────────────────────┤
+│ Week 1 (Done)     │ AI Engine, Materials Search, Sync & Dashboard       │
+│ Week 2 (Current)  │ OpenAPI Contract Freeze, Export & Mock Server Setup │
+│ Week 3 (Upcoming) │ Opportunity Engine (Bursaries, Learnerships, Feeds)│
+│ Week 4 (Upcoming) │ Payload Compression (Gzip/Brotli) & Final Load Pass │
+└───────────────────┴─────────────────────────────────────────────────────┘
+
+```
+
+---
+
+### Month 2, Week 2 Blueprint — OpenAPI Contract Freeze & Offshore API Specification
+
+#### 1. Strategic Goal
+
+Before the offshore team writes a single line of Dart/Flutter code, the backend must expose a strict, deterministic, and fully documented **OpenAPI 3.1 specification** (`openapi.json`).
+
+Because `/docs` and `/openapi.json` are auto-disabled in `staging` and `production` environments, we will create a dedicated developer export script (`scripts/export_openapi.py`) that dumps the precise contract from the `development` build.
+
+---
+
+#### 2. Technical Objectives
+
+* **OpenAPI Contract Generation:** Export a static, valid `openapi.json` file representing all 15 active routes.
+
+
+* **Strict Auth Casing Enforcement:** Explicitly document the `X-Auth-Mode: api` header on all authentication endpoints so the offshore client Dio interceptors format bearer tokens properly.
+
+
+* **Mock Server Parity:** Ensure field-level Pydantic validation rules (e.g., bounds, regexes, Enums) map 1:1 to Dart models.
+
+---
+
+#### 3. File Implementation Map
+
+| File Path | Action | Description |
+| --- | --- | --- |
+| `scripts/export_openapi.py` | **NEW** | Script to generate static `openapi.json` for offshore client codegen. |
+| `app/main.py` | **UPDATE** | Enrich FastAPI route metadata, tags, and summary attributes. |
+| `docs/API_CONTRACT_V1.md` | **NEW** | Human-readable API guide for the offshore lead developer. |
+
+---
+
+#### 4. Developer Implementation Guide
+
+##### Step 1: Create Static OpenAPI Exporter (`scripts/export_openapi.py`)
+
+```python
+"""
+scripts/export_openapi.py
+
+PURPOSE:
+Generates static openapi.json from the FastAPI application instance.
+Used by offshore developers for Flutter Dio/Drift client code generation.
+"""
+
+import json
+import os
+import sys
+
+# Ensure app module is in python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.main import app
+
+def export_schema():
+    openapi_data = app.openapi()
+    output_path = os.path.join(os.path.dirname(__file__), "..", "docs", "openapi.json")
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(openapi_data, f, indent=2)
+        
+    print(f"[+] Successfully exported OpenAPI contract to: {output_path}")
+
+if __name__ == "__main__":
+    export_schema()
+
+```
+
+---
+
+##### Step 2: Offshore Client Integration Contract (`docs/API_CONTRACT_V1.md`)
+
+Provide this document to your offshore development lead alongside the `openapi.json` export:
+
+```markdown
+# Varsity Companion API — Offshore Client Contract (v1.0.0)
+
+### 1. Base URLs & Environment Toggles
+* **Local Development:** `http://127.0.0.1:8000`
+* **Staging Server:** `https://staging-api.varsitycompanion.co.za`
+
+### 2. Mandatory Authentication Headers
+* **Header Name:** `X-Auth-Mode`
+* **Header Value:** `api` (strictly lowercase)
+* **Bearer Authorization:** `Authorization: Bearer <jwt_token>`
+
+> **CRITICAL FOR OFFSHORE TEAM:** Browsers use HttpOnly cookies by default. Mobile clients (Flutter Dio) MUST include `X-Auth-Mode: api` on `POST /api/v1/auth/login` to receive the raw JWT in the response body.
+
+### 3. Rate Limit Responses (HTTP 429)
+When rate limits or AI daily quotas are exceeded, the API returns `HTTP 429 Too Many Requests`:
+```json
+{
+  "detail": "Daily free summary limit reached (10/10). Upgrade or try again tomorrow."
+}
+
+```
+
+### 4. Bounded Input Safeguards
+
+* **Max Payload Size:** `10 KB` (HTTP 413 if exceeded).
+* **AI Summary Max Length:** `32,000 characters`.
+* **Search Query Max Length:** `100 characters`.
+* **Sync Batch Limit:** `100 items` per push request.
+
+```
+
+---
+
+### 5. Acceptance Criteria for Month 2, Week 2, Day 1
+
+1. **Schema Export Execution:** Running `python scripts/export_openapi.py` outputs a valid, parseable `docs/openapi.json` file.
+2. **Endpoint Coverage:** Schema contains all 15 active routes across Auth, User Profile, Academic Tracker, AI Engine, Materials Search, Offline Sync, and Dashboard modules[cite: 16].
+3. **Automated Validation:** Flutter/Dart OpenAPI generator tools cleanly parse `openapi.json` without structural schema errors.
+4. **Zero Regressions:** All **179 automated backend tests** pass cleanly[cite: 16].
+
+---
+
+Pass this blueprint to your developer to execute **Month 2, Week 2, Day 1**!
+
+```

@@ -1,0 +1,6 @@
+module_code,title,url,resource_type,quality_resolution,description
+INF154,Python Loops Explained,https://www.youtube.com/watch?v=loops-tutorial,YOUTUBE,360p,Clear walkthrough of for and while loops
+INF154,Arrays vs Lists,https://www.youtube.com/watch?v=arrays-vs-lists,YOUTUBE,360p,When to use each
+COS132,Recursion in 10 Minutes,https://www.youtube.com/watch?v=recursion-10min,YOUTUBE,360p,
+COS132,Common Recursion Mistakes,https://example.org/articles/recursion-pitfalls,ARTICLE,HTML,Five mistakes beginners make
+COS212,Linked List Reference,https://example.org/refs/linked-lists.pdf,PDF,PDF,Quick reference sheet

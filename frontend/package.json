@@ -10,7 +10,7 @@
     "format": "oxfmt"
   },
   "dependencies": {
-    "mammoth": "^1.12.3",
+    "mammoth": "^1.13.0",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -22,8 +22,14 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
     "oxfmt": "^0.2.0",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "vite": "^8.0.5"
-  }
+    "vite": "^8.0.5",
+    "vite-plugin-pwa": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "npm@10"
 }

@@ -61,16 +61,35 @@ def get_student_dashboard(db: Session, user_id: uuid.UUID) -> dict:
         .all()
     )
 
-    urgent_tasks = (
+    # Overdue tasks FIRST, then the soonest upcoming.
+    #
+    # A plain ascending sort by due date puts everything already past due at the
+    # top, which filled all five slots on a busy account and pushed a genuinely
+    # urgent new deadline out of view entirely. Splitting the two means the list
+    # always shows something actionable rather than reading as "nothing here".
+    overdue = (
         db.query(AcademicTask)
         .filter(
             AcademicTask.user_id == user_id,
             AcademicTask.is_completed.is_(False),
+            AcademicTask.due_date < now,
+        )
+        .order_by(AcademicTask.due_date.asc())
+        .limit(3)
+        .all()
+    )
+    upcoming = (
+        db.query(AcademicTask)
+        .filter(
+            AcademicTask.user_id == user_id,
+            AcademicTask.is_completed.is_(False),
+            AcademicTask.due_date >= now,
         )
         .order_by(AcademicTask.due_date.asc())
         .limit(5)
         .all()
     )
+    urgent_tasks = overdue + upcoming
 
     quota = (
         db.query(UserAIQuota)
@@ -80,10 +99,22 @@ def get_student_dashboard(db: Session, user_id: uuid.UUID) -> dict:
 
     modules_count = db.query(Module).filter(Module.user_id == user_id).count()
 
+    # Counted separately from the limited list above: the caller needs to know
+    # how many deadlines exist in total, not just how many are shown.
+    total_open_tasks = (
+        db.query(AcademicTask)
+        .filter(
+            AcademicTask.user_id == user_id,
+            AcademicTask.is_completed.is_(False),
+        )
+        .count()
+    )
+
     return {
         "server_timestamp": now,
         "today_slots": today_slots,
         "urgent_tasks": urgent_tasks,
         "ai_quota": _quota_response(quota, today.isoformat()),
         "modules_count": modules_count,
+        "total_open_tasks": total_open_tasks,
     }

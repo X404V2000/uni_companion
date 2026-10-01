@@ -1,10 +1,15 @@
 {
-  "description": "This web application offers a user-friendly interface for project management, enabling users to organize, track, and collaborate on various projects efficiently.",
-  "robots": {
-    "index": false
-  },
-  "accessibility": {
-    "addBypassLinks": false,
-    "ignoreReducedMotion": false
-  }
+    "description": "Course-aware AI study companion for South African university students. Summarise your notes, track deadlines, and find trusted study materials.",
+    "robots": {
+        "index": true
+    },
+    "accessibility": {
+        "addBypassLinks": false,
+        "ignoreReducedMotion": false
+    },
+    "title": "Varsity Companion",
+    "language": "en",
+    "icons": {
+        "icon": "/icons/icon-192.png"
+    }
 }

@@ -1,0 +1,19 @@
+# ============================================================================
+# Cloudflare Pages routing rules.
+#
+# WHY THIS EXISTS
+# ---------------
+# The app is a single-page application: every screen is served by the same
+# index.html and React decides what to render. A static host has no way to know
+# that, so a request for a path it does not have on disk returns its own 404.
+#
+# Without this file, navigating to a sub-path and pressing refresh shows a
+# Cloudflare 404 instead of the app - which looks like the site is broken even
+# though only the deep link is.
+#
+# The 200 status is deliberate: it serves index.html WITHOUT redirecting, so the
+# URL in the address bar is preserved for React to read. A 301 to "/" would wipe
+# the path before the app could route on it.
+# ============================================================================
+
+/*  /index.html  200

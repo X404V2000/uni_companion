@@ -114,7 +114,18 @@ class TestMetrics:
 
 class TestEventRecording:
     def test_dashboard_view_recorded(self, client, db):
+        """A consented user's dashboard view IS recorded.
+
+        Usage events are Category B data, so recording now requires consent
+        (Day 3.5). Without the grant below this test would assert the opposite
+        of the intended behaviour.
+        """
         _, token = _signup_and_token(client)
+        client.post(
+            "/api/v1/analytics/consent",
+            json={"granted": True, "source": "onboarding"},
+            headers=_auth(client, token),
+        )
         assert client.get(
             "/api/v1/academic/dashboard", headers=_auth(client, token)
         ).status_code == 200
@@ -122,6 +133,23 @@ class TestEventRecording:
         uid = uuid.UUID(me["id"])
         events = db.query(UsageEvent).filter(UsageEvent.user_id == uid).all()
         assert any(e.event_type == "DASHBOARD_VIEWED" for e in events)
+
+    def test_dashboard_view_not_recorded_without_consent(self, client, db):
+        """The complement: with no consent, the same request stores nothing.
+
+        Both halves matter. Asserting only the recorded case would pass even if
+        consent gating were removed entirely.
+        """
+        _, token = _signup_and_token(client)
+        assert client.get(
+            "/api/v1/academic/dashboard", headers=_auth(client, token)
+        ).status_code == 200
+        me = client.get("/api/v1/auth/me", headers=_auth(client, token)).json()
+        uid = uuid.UUID(me["id"])
+        events = db.query(UsageEvent).filter(UsageEvent.user_id == uid).all()
+        assert events == [], (
+            "the dashboard recorded an event for a user who has not consented"
+        )
 
 
 class TestFeedbackModel:

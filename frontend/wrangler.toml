@@ -1,0 +1,30 @@
+# ============================================================================
+# Cloudflare Workers configuration.
+#
+# WHY THIS EXISTS
+# ---------------
+# Cloudflare's current dashboard creates new projects as Workers rather than
+# Pages, and the Workers flow expects a `wrangler.toml`. Without one, the deploy
+# command (`npx wrangler deploy`) has nothing to build against and fails.
+#
+# WHY "assets" AND NOT A SCRIPT
+# -----------------------------
+# This frontend is a pure static single-page application: `vite build` emits
+# HTML, CSS and JS, and there is no server-side code. Cloudflare's static asset
+# hosting serves that directly, so `[assets]` is the whole configuration - there
+# is no Worker script to run and no runtime to pay for.
+#
+# `not_found_handling = "single-page-application"` is what makes deep links work.
+# Every screen is served by the same index.html and React decides what to render,
+# but a static host cannot know that, so a request for a path that is not on disk
+# would otherwise return its own 404. This replaces the equivalent `_redirects`
+# file, which Pages reads but the Workers assets flow does not.
+# ============================================================================
+
+name = "varsity-companion"
+compatibility_date = "2026-09-30"
+
+# Directory produced by `npm run build`, relative to this file.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

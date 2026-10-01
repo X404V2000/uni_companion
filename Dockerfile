@@ -41,6 +41,7 @@ FROM python:3.13-alpine AS runner
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/install/lib/python3.13/site-packages \
+    PATH=/install/bin:$PATH \
     LOG_TO_FILE=false
 
 WORKDIR /app
@@ -54,6 +55,7 @@ RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser \
 # Copy ONLY the installed site-packages (not a duplicated stdlib venv).
 COPY --from=builder --chown=appuser:appuser /install /install
 COPY --chown=appuser:appuser . /app
+RUN chmod +x /app/scripts/docker_entrypoint.sh
 
 USER appuser
 
@@ -65,4 +67,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=4).status==200 else 1)" || exit 1
 
 # Two workers; pool settings sized for Neon free-tier (see day_2_report.md).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Entrypoint applies migrations before serving, and honours $PORT (most free
+# hosts inject the port to bind). See scripts/docker_entrypoint.sh for why both
+# matter - running uvicorn directly here left a fresh database unmigrated.
+CMD ["./scripts/docker_entrypoint.sh"]

@@ -21,8 +21,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.rate_limiter import limiter
 from app.db.session import get_db
-from app.models.user import User
 from app.models.academic import Module
+from app.models.user import User
 from app.schemas.ai import (
     AISummaryRequest,
     AISummaryResponse,
@@ -37,6 +37,7 @@ from app.schemas.ai import (
     SummaryHistoryResponse,
     UserQuotaResponse,
 )
+from app.schemas.analytics import SignalRequest
 from app.services import (
     ai_service,
     analytics_service,
@@ -81,6 +82,7 @@ def request_ai_summary(
             current_user.id,
             "SUMMARY_CACHE_HIT" if result.get("cached") else "SUMMARY_GENERATED",
             module_code=payload.module_code,
+            has_consent=getattr(current_user, "_has_improvement_consent", False),
         )
         return result
     except ai_service.QuotaExceededError as exc:
@@ -102,6 +104,7 @@ def request_ai_summary(
             current_user.id,
             "SUMMARIZE_DURATION",
             duration_ms=elapsed_ms,
+            has_consent=getattr(current_user, "_has_improvement_consent", False),
         )
 
 
@@ -304,3 +307,41 @@ def fetch_link(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+
+
+@router.post(
+    "/summaries/{subject_hash}/signal",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("30/minute")
+def record_summary_signal(
+    request: Request,
+    subject_hash: str,
+    payload: SignalRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Record a quality signal on a summary the user has already generated.
+
+    `subject_hash` is the same content_hash that ai_summary_caches stores, so
+    the signal attaches to an output without any content being duplicated here.
+
+    CONSENT IS REQUIRED. When the user has not consented, the request still
+    returns 204 - deliberately. Reporting "we didn't store that" would force
+    clients to handle a refusal they cannot act on, and an observability call
+    should never surface a failure the user cannot fix. Nothing is written.
+
+    204 because the client is firing a signal and moving on; there is no body
+    worth returning.
+    """
+    if not getattr(current_user, "_has_improvement_consent", False):
+        return  # silently accepted, deliberately not stored
+
+    analytics_service.record_signal(
+        db=db,
+        user_id=current_user.id,
+        sample_type="summary",
+        subject_hash=subject_hash,
+        signal=payload.signal,
+        compared_with=payload.compared_with,
+    )

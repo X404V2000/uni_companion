@@ -5,7 +5,12 @@ from app.models.ai import (
     BriefDocument,
     UserAIQuota,
 )
-from app.models.analytics import Feedback, UsageEvent
+from app.models.analytics import (
+    Feedback,
+    ImprovementSignal,
+    UsageEvent,
+    UserConsent,
+)
 from app.models.material import StudyMaterial
 from app.models.user import User
 
@@ -19,4 +24,8 @@ __all__ = [
     "StudyMaterial",
     "UsageEvent",
     "Feedback",
+    "UserConsent",
+    "ImprovementSignal",
+    "BriefDocument",
+    "BriefChunk",
 ]

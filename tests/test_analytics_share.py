@@ -65,6 +65,20 @@ def _auth(client, token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def _consent(client, token):
+    """Grant improvement consent.
+
+    Share events are Category B data, so they are only recorded for a consented
+    user (Day 3.5). Every share test needs this, so it lives in one place.
+    """
+    resp = client.post(
+        "/api/v1/analytics/consent",
+        json={"granted": True, "source": "onboarding"},
+        headers=_auth(client, token),
+    )
+    assert resp.status_code == 200, resp.text
+
+
 class TestShareEndpoint:
     def test_share_requires_auth(self, client):
         assert client.post(
@@ -91,6 +105,7 @@ class TestShareEndpoint:
 
     def test_share_normalizes_lowercase(self, client, db):
         token = _signup_and_token(client)
+        _consent(client, token)
         resp = client.post(
             "/api/v1/analytics/share",
             json={"module_code": "inf154"},
@@ -109,6 +124,7 @@ class TestShareEndpoint:
 class TestShareMetrics:
     def test_metrics_shares_count_reflects_events(self, client, db):
         token = _signup_and_token(client)
+        _consent(client, token)
         for _ in range(3):
             assert client.post(
                 "/api/v1/analytics/share",
@@ -128,6 +144,7 @@ class TestShareMetrics:
         # Sharer A shares INF154; B signs up and creates INF154 module within
         # 7 days -> conversion.
         token_a = _signup_and_token(client)
+        _consent(client, token_a)
         assert client.post(
             "/api/v1/analytics/share",
             json={"module_code": "INF154"},
@@ -167,9 +184,11 @@ class TestShareMetrics:
         """
         from app.services import analytics_service
 
-        # Three distinct sharers all share INF154.
+        # Three distinct sharers all share INF154. Each must consent, or the
+        # share event is not stored and there is nothing to measure.
         for _ in range(3):
             token = _signup_and_token(client)
+            _consent(client, token)
             assert client.post(
                 "/api/v1/analytics/share",
                 json={"module_code": "INF154"},

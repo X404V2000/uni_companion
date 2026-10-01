@@ -20,11 +20,44 @@
  *   screen.
  */
 
-// Backend origin. Configurable at build/dev time via VITE_API_BASE; defaults
-// to the local FastAPI app (uvicorn app.main:app on :8000).
-export const API_BASE: string =
-  (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ||
-  "http://127.0.0.1:8000";
+/**
+ * Backend origin.
+ *
+ * Resolution order:
+ *   1. VITE_API_BASE, when the build environment supplies it.
+ *   2. The deployed Render backend.
+ *   3. Local uvicorn, so a developer who sets nothing still works.
+ *
+ * WHY A COMMITTED DEFAULT
+ * -----------------------
+ * The deployed frontend was failing with "Network error" because it had been
+ * built against a quick-tunnel URL that had since died. Correcting it required
+ * editing a variable in the Cloudflare dashboard and rebuilding, but that flow
+ * proved unreliable to reach, and a static bundle cannot pick up a changed
+ * variable without a rebuild regardless.
+ *
+ * Committing the production URL means a plain `git push` produces a correct
+ * build with no dashboard step, and it removes an entire class of "the build
+ * ran but pointed somewhere stale" failures. The environment variable still
+ * wins when set, so local development and any future backend move are
+ * unaffected.
+ */
+function resolveApiBase(): string {
+  const fromEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+
+  // A local build (dev server, or a build run on a laptop) should talk to the
+  // local API rather than production, so the committed default only applies to
+  // production builds.
+  if (import.meta.env.DEV) return "http://127.0.0.1:8000";
+
+  return PRODUCTION_API_BASE;
+}
+
+/** The deployed backend. Change this if the backend moves. */
+const PRODUCTION_API_BASE = "https://uni-companion.onrender.com";
+
+export const API_BASE: string = resolveApiBase();
 
 const TOKEN_KEY = "vc.token";
 

@@ -24,7 +24,7 @@ WHY NOT JUST USE os.getenv() EVERYWHERE?
 
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +38,34 @@ class Settings(BaseSettings):
     ## Full Neon Postgres connection string. No default value given,
     ## that makes it REQUIRED. The app will not start without it.
     database_url: str
+
+    @field_validator("database_url")
+    @classmethod
+    def _force_psycopg3_driver(cls, value: str) -> str:
+        """Rewrite a bare postgresql:// URL to the psycopg v3 driver.
+
+        WHY HERE AND NOT AT EACH CALL SITE
+        ----------------------------------
+        The project uses psycopg 3, which SQLAlchemy reaches through the
+        ``postgresql+psycopg://`` scheme. Given a plain ``postgresql://`` URL it
+        silently defaults to psycopg2 and fails with "No module named
+        'psycopg2'" - a confusing error, because the missing module is one we
+        deliberately never install.
+
+        This normalisation previously lived only in app/db/session.py, which the
+        application uses but Alembic does not: alembic/env.py reads
+        settings.database_url directly. On Render, where the environment
+        variable is whatever the host supplies, migrations died on import while
+        the API would have started fine. Moving it here means every consumer -
+        the app, the migrations, the scripts - gets the corrected URL from one
+        place, and no future caller can forget it.
+        """
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        # Neon and Render also hand out the legacy scheme occasionally.
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+psycopg://", 1)
+        return value
 
     ## JWT signing secret. REQUIRED (no default): a weak or missing secret
     ## would let anyone forge tokens. Generate via `openssl rand -hex 32`.

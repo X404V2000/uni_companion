@@ -1,6 +1,10 @@
 # ============================================================================
 # Cloudflare Workers configuration.
 #
+# NOTE: `name` must match the Worker Cloudflare creates from the project,
+# otherwise its CI overrides the value and offers to open a pull request
+# correcting this file. Cloudflare named it after the repository.
+#
 # WHY THIS EXISTS
 # ---------------
 # Cloudflare's current dashboard creates new projects as Workers rather than
@@ -21,7 +25,7 @@
 # file, which Pages reads but the Workers assets flow does not.
 # ============================================================================
 
-name = "varsity-companion"
+name = "uni-companion"
 compatibility_date = "2026-09-30"
 
 # Directory produced by `npm run build`, relative to this file.

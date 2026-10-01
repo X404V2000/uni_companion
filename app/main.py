@@ -431,10 +431,21 @@ allowed_origins = [
 #   * only when the environment is NOT production, so a real deployment keeps a
 #     strict, explicit list.
 # Localhost is matched too, so a local frontend on any port keeps working.
+# Cloudflare-hosted frontends (workers.dev, pages.dev) are matched because the
+# deployed site is a different origin from the tunnel and would otherwise be
+# blocked by CORS on every request.
 if settings.environment != "production":
     allowed_origin_regex = (
         r"^https?://("
         r"[a-z0-9-]+\.trycloudflare\.com"
+        # Cloudflare Workers and Pages host the deployed frontend. Without this
+        # the deployed site cannot call the API at all: the browser sends the
+        # request, the preflight fails, and every feature reports a network
+        # error even though the backend is healthy. Scoped to the workers.dev
+        # and pages.dev domains rather than opened to "*", so an arbitrary site
+        # still cannot call the API with credentials.
+        r"|[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev"
+        r"|[a-z0-9-]+\.pages\.dev"
         r"|localhost(:\d+)?"
         r"|127\.0\.0\.1(:\d+)?"
         r")$"

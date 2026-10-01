@@ -8,6 +8,10 @@ connections.
 This repository contains the **product** (backend + web client). It is separate
 from the hackathon submission repository.
 
+> **New here? Read `docs/PROJECT_HISTORY.md` first.** It records what exists, why
+> each decision was made, the bugs already fixed so they are not reintroduced, and
+> how the live deployment is wired.
+
 ---
 
 ## What it does

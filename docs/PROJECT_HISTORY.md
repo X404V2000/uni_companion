@@ -304,3 +304,75 @@ GitHub tokens were leaked that way during this project.
 
 The Render dashboard, Cloudflare dashboard, and Neon console are the sources of truth for
 production values. This file names configuration keys and never their values.
+
+---
+
+## 11. The mobile app — `mobile/`
+
+**Mobile V1.** Offline sync is not here; that is Mobile V2. See §9.
+
+### Why React Native and not Flutter
+
+The roadmap PDF specifies Flutter. That was overridden deliberately, and this is recorded
+so it is not "corrected" by someone reading only the PDF. The reasons are in §6.
+
+### Structure
+
+```
+app/_layout.tsx          providers and the navigation tree
+app/(auth)/_layout.tsx   redirects a signed-in student onward
+app/(auth)/sign-in.tsx   login and signup in one screen
+app/(tabs)/_layout.tsx   the tab bar, and the redirect guard
+app/(tabs)/index.tsx     Home — dashboard, deadlines, modules, activity
+app/(tabs)/planner.tsx   deadlines, with the add form in a modal
+app/(tabs)/summaries.tsx AI summaries, and the POPIA consent sheet
+app/(tabs)/materials.tsx Find Materials
+app/(tabs)/settings.tsx  profile, modules, consent toggle, sign out
+src/lib/api.ts           the ported API client
+src/lib/queries.ts       React Query layer
+src/lib/consent.ts       POPIA consent
+src/lib/session.tsx      who is signed in
+src/lib/dates.ts         pure date helpers
+src/theme.ts             the design tokens
+src/components/ui.tsx    five shared primitives
+```
+
+### Verify it
+
+```bash
+cd mobile
+npm install
+npx tsc --noEmit        # must be clean
+npx jest                # 27 tests
+npx expo start          # then scan the QR code with Expo Go
+```
+
+Point it at a different backend with `EXPO_PUBLIC_API_BASE`. Without it, a development
+build targets `127.0.0.1:8000` and a production build targets the deployed Render backend,
+so a plain build is correct with no configuration.
+
+### Two things that broke during the build, and why
+
+**`Stack.Protected` froze the tab bar.** The first version gated the route groups with
+`Stack.Protected guard={...}` in the root layout. Signing in worked — the API returned 200
+and the token was stored — but tapping a tab changed the URL and left Home mounted. A
+`Tabs` navigator inside a conditionally mounted group keeps whichever screen it first
+resolved. **Fix:** both groups are now declared unconditionally and each group's own layout
+redirects. Do not reintroduce a conditional group around a navigator.
+
+**The session could not tell the guard it had changed.** With the session state living in
+the root layout, `login()` had no way to say "a login happened", so the guard still saw
+`signed-out` and the app bounced straight back to the login screen without any error.
+**Fix:** `src/lib/session.tsx` holds the state and is readable and settable anywhere.
+
+### A test does not need a real password
+
+An early version of `api.test.ts` used the demo account's actual password. A test double
+should use a placeholder. This matters beyond tidiness: putting a real credential in a
+tracked file is precisely how the earlier leak happened (§1).
+
+### What is deliberately not here
+
+File upload, PDF/DOCX parsing, offline sync, the Opportunity Hub, push notifications,
+biometrics, and store submission. Each is listed in §9. **File upload is the most likely
+next ask** — the web client has it and a student will expect it on the phone.

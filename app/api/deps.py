@@ -23,6 +23,7 @@ from app.core.roles import UserRole
 from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import User
+from app.services import consent_service
 
 # Cookie name for the access token
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
@@ -103,6 +104,20 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
         raise credentials_exception
+
+    # 4. Resolve improvement-consent ONCE for the whole request and hang it on
+    #    the user object.
+    #
+    #    WHY HERE AND NOT INSIDE record_event: usage events are Category B data,
+    #    so they may only be stored with consent. Resolving it inside the
+    #    recorder would add a SELECT per EVENT - and the dashboard fires two
+    #    events per load, so the hottest endpoint would double its queries.
+    #    Doing it here costs exactly one indexed lookup per authenticated
+    #    request, and every downstream handler reads the cached answer.
+    #
+    #    A leading underscore marks it as request-scoped state, not a column:
+    #    it is never persisted and must not be treated as part of the model.
+    user._has_improvement_consent = consent_service.has_consent(db, user.id)
 
     return user
 

@@ -156,6 +156,9 @@ export type DashboardData = {
     remaining_credits: number;
   };
   modules_count: number;
+  // Total open deadlines. The list above is truncated, so a UI can say
+  // "5 of 13" instead of letting a partial list look complete.
+  total_open_tasks?: number;
 };
 
 /** Log in and return the raw access token (API mode). */
@@ -166,6 +169,11 @@ export async function login(email: string, password: string): Promise<string> {
     headers: { "x-auth-mode": "api" },
     body: { email, password },
   });
+  // Persist here, not only at the call site. Returning the token without
+  // storing it meant a caller that forgot setToken() produced a logged-in
+  // looking screen where every request was unauthenticated - the token was
+  // silently dropped and every list came back empty.
+  setToken(data.access_token);
   return data.access_token;
 }
 
@@ -259,6 +267,16 @@ export async function createModule(code: string, name: string) {
       body: { code, name },
     },
   );
+}
+
+/**
+ * Delete a module.
+ *
+ * The endpoint answers 204 with no body, which api() already handles - it reads
+ * the response as text and only parses when there is something to parse.
+ */
+export async function deleteModule(moduleId: string): Promise<void> {
+  await api(`/api/v1/academic/modules/${moduleId}`, { method: "DELETE" });
 }
 
 export type AcademicTask = {

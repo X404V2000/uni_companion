@@ -18,6 +18,9 @@ class AcademicDashboardResponse(BaseModel):
     urgent_tasks: list[TaskResponse]
     ai_quota: UserQuotaResponse
     modules_count: int
+    # Total open deadlines, so a UI showing only the soonest few can say so
+    # instead of letting a truncated list look like the complete one.
+    total_open_tasks: int = 0
 
 
 # ---------------------------------------------------------------------------

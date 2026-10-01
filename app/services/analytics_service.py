@@ -41,7 +41,7 @@ from sqlalchemy.orm import Session
 from app.core.event_types import ALL_EVENT_TYPE_VALUES, EventType
 from app.models.academic import Module
 from app.models.ai import AISummaryCache
-from app.models.analytics import Feedback, UsageEvent
+from app.models.analytics import Feedback, ImprovementSignal, UsageEvent
 
 # Blended Gemini Flash pricing (USD per 1M tokens): input 0.10 + output 0.40,
 # assuming ~2:1 input:output for summaries. Configurable without a migration.
@@ -63,9 +63,26 @@ def record_event(
     event_type: str,
     module_code: str | None = None,
     duration_ms: int | None = None,
+    has_consent: bool = False,
 ) -> None:
-    """Append a usage event. Best-effort: telemetry must never break the core
-    loop, so any storage failure is swallowed."""
+    """Append a usage event, ONLY when the user has consented.
+
+    Usage events are Category B data (product improvement), so POPIA requires
+    consent before they are stored. The flag is passed IN rather than looked up
+    here on purpose: `record_event` is called on the hottest paths in the app
+    (dashboard view, materials search, sync), and a query inside it would add
+    one SELECT per event - two per dashboard load. Consent is resolved once per
+    request in `get_current_user` and carried on the user object.
+
+    Defaults to False. A caller that forgets the flag records nothing, which is
+    the safe direction to fail: an unrecorded event costs us a data point, an
+    unconsented one is a breach.
+
+    Best-effort: telemetry must never break the core loop, so any storage
+    failure is swallowed.
+    """
+    if not has_consent:
+        return  # no consent -> no write, and no query either
     if event_type not in ALL_EVENT_TYPE_VALUES:
         return  # silently drop unknown event types (typo guard)
     try:
@@ -82,21 +99,71 @@ def record_event(
         db.rollback()
 
 
-def record_share(db: Session, user_id: uuid.UUID, module_code: str) -> None:
+def record_share(
+    db: Session,
+    user_id: uuid.UUID,
+    module_code: str,
+    has_consent: bool = False,
+) -> None:
     """Record a module share event (client fired the OS share sheet)."""
     record_event(
         db, user_id=user_id, event_type=EventType.MODULE_SHARE.value,
-        module_code=module_code,
+        module_code=module_code, has_consent=has_consent,
     )
 
 
 def record_duration(
-    db: Session, user_id: uuid.UUID, event_type: str, duration_ms: int
+    db: Session,
+    user_id: uuid.UUID,
+    event_type: str,
+    duration_ms: int,
+    has_consent: bool = False,
 ) -> None:
     """Record a duration event; out-of-bounds values are silently dropped."""
+    if not has_consent:
+        return  # no consent -> no duration telemetry either
     if duration_ms < 0 or duration_ms > _MAX_DURATION_MS:
         return  # silently drop out-of-bounds durations (never poison p95)
-    record_event(db, user_id=user_id, event_type=event_type, duration_ms=duration_ms)
+    record_event(
+        db, user_id=user_id, event_type=event_type, duration_ms=duration_ms,
+        has_consent=has_consent,
+    )
+
+
+def record_signal(
+    db: Session,
+    user_id: uuid.UUID,
+    sample_type: str,
+    subject_hash: str,
+    signal: str,
+    compared_with: str | None = None,
+) -> ImprovementSignal | None:
+    """Store a quality signal on an AI output. Best-effort, like other telemetry.
+
+    Contains NO user content: `subject_hash` identifies the output, and
+    `compared_with` identifies the alternative it was preferred over. The
+    database CHECK constraints reject an invalid signal value or a
+    `preferred_over` with nothing to prefer over, so an invalid row cannot be
+    written even if a caller skips validation.
+
+    Returns the row, or None if storage failed (telemetry must never break the
+    caller's request).
+    """
+    try:
+        row = ImprovementSignal(
+            user_id=user_id,
+            sample_type=sample_type,
+            subject_hash=subject_hash,
+            signal=signal,
+            compared_with=compared_with,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+    except Exception:  # noqa: S110 - telemetry failure must never fail the request
+        db.rollback()
+        return None
 
 
 def record_feedback(db: Session, user_id: uuid.UUID, rating: int, comment: str | None) -> Feedback:

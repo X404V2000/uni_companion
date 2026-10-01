@@ -54,3 +54,16 @@ plan/
 .vscode/
 .idea/
 .DS_Store
+
+# --- Frontend applications: NOT part of the API image ---
+# The API image had grown to 885 MB because `COPY . /app` swept both frontends
+# in: 341 MB of new_frontend_layout (including node_modules and its dist) and
+# 217 MB of frontend. Neither is served by this container - the API has no
+# static mount, so the images are pure weight. Excluded here, the runtime image
+# is a small fraction of that.
+#
+# They are built and deployed separately; excluding them does not affect the
+# frontend deploys.
+new_frontend_layout/
+frontend/
+node_modules/

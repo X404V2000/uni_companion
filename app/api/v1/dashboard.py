@@ -31,7 +31,12 @@ def get_academic_dashboard(
 ):
     """Return the caller's unified daily academic status payload."""
     result = dashboard_service.get_student_dashboard(db=db, user_id=current_user.id)
-    analytics_service.record_event(db, current_user.id, "DASHBOARD_VIEWED")
+    analytics_service.record_event(
+        db,
+        current_user.id,
+        "DASHBOARD_VIEWED",
+        has_consent=getattr(current_user, "_has_improvement_consent", False),
+    )
     return result
 
 

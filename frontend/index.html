@@ -1,20 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="<!-- figma:lang -->">
   <head>
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Real branding: the export left these as empty Figma placeholder
-         comments, so the browser tab fell back to the package name
-         ("figma-make-app") — not something to show a judge. -->
-    <title>Varsity Companion — AI study assistant</title>
-    <meta
-      name="description"
-      content="Course-aware AI summaries, real study materials, exam-risk alerts and instant answers about your own assignment briefs."
-    />
-    <meta name="theme-color" content="#173C46" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23173C46'/%3E%3Ctext x='50' y='68' font-size='58' font-family='system-ui,sans-serif' font-weight='700' text-anchor='middle' fill='%2358A99F'%3EVC%3C/text%3E%3C/svg%3E" />
+    <title><!-- figma:title --></title>
     <!-- figma:head-end -->
+    <!--
+      PWA tags. Placed AFTER the figma:head-end marker on purpose: everything
+      between figma:head-start and figma:head-end is rewritten from
+      .figma/make/site.json by the figmaSiteConfiguration plugin on every build,
+      so tags inside that region are discarded.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#1C1814">
+
+    <!--
+      iOS does not read the web manifest for the home-screen experience, so
+      these are still required for "Add to Home Screen" to launch full-screen
+      with the right status bar and label.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Varsity">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="mobile-web-app-capable" content="yes">
   </head>
   <body>
     <!-- figma:body-start -->

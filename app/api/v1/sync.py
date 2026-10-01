@@ -35,13 +35,19 @@ def push_offline_changes(
         result = sync_service.process_sync_push(
             db=db, user_id=current_user.id, push_data=payload
         )
-        analytics_service.record_event(db, current_user.id, "SYNC_PUSHED")
+        analytics_service.record_event(
+            db,
+            current_user.id,
+            "SYNC_PUSHED",
+            has_consent=getattr(current_user, "_has_improvement_consent", False),
+        )
         if payload.client_duration_ms is not None:
             analytics_service.record_duration(
                 db,
                 current_user.id,
                 "SYNC_PUSH_DURATION",
                 duration_ms=payload.client_duration_ms,
+                has_consent=getattr(current_user, "_has_improvement_consent", False),
             )
         return result
     except ValueError as exc:

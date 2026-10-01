@@ -1,10 +1,45 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
+@theme {
+  /* Surfaces — warm dark, not pitch-black. Pure #000 with pure #FFF text
+     causes halation on OLED phones, which is where this app is mostly used. */
+  --color-bg: #1C1814;
+  --color-surface: #262220;
+  --color-raised: #2E2A26;
+  --color-sunk: #16130F;
+
+  /* Borders */
+  --color-border: #3A342E;
+  --color-border-strong: #4A423A;
+
+  /* Text — never pure white, for the same halation reason */
+  --color-fg: #EDE8E0;
+  --color-fg-muted: #B8B0A6;
+  --color-fg-subtle: #9C9488;
+  --color-fg-on-accent: #171310;
+
+  /* Accents */
+  --color-accent: #FF7A5C;
+  --color-accent-hover: #FF5F3D;
+  --color-teal: #6BC5B8;
+  --color-success: #6BBF85;
+  --color-warning: #E8A852;
+  --color-danger: #E85C6A;
+
+  /* Module accents */
+  --color-module-a: #FF7A5C;
+  --color-module-a-pale: #2E1E1A;
+  --color-module-b: #6BC5B8;
+  --color-module-b-pale: #1A2826;
+  --color-module-c: #E8A852;
+  --color-module-c-pale: #2A2418;
+}
+
 :root {
   font-family: "DM Sans", sans-serif;
-  color: #162a3a;
-  background: #f7f8f5;
+  color: var(--color-fg);
+  background: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -13,6 +48,16 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 button,
@@ -34,7 +79,7 @@ button {
   width: 35px;
   height: 35px;
   border-radius: 11px;
-  background: #173c46;
+  background: var(--color-surface);
   overflow: hidden;
 }
 
@@ -43,7 +88,7 @@ button {
   bottom: 7px;
   width: 5px;
   border-radius: 4px;
-  background: #f5f1e8;
+  background: var(--color-fg);
   transform: rotate(36deg);
 }
 
@@ -55,13 +100,13 @@ button {
 .logo-mark span:nth-child(2) {
   left: 15px;
   height: 19px;
-  background: #eb765b;
+  background: var(--color-accent);
 }
 
 .logo-mark span:nth-child(3) {
   left: 22px;
   height: 25px;
-  background: #66b4a8;
+  background: var(--color-teal);
 }
 
 .hero-card::after {
@@ -71,7 +116,7 @@ button {
   height: 320px;
   right: -80px;
   top: -100px;
-  border: 54px solid rgba(110, 182, 170, 0.11);
+  border: 54px solid rgba(107, 197, 184, 0.10);
   border-radius: 50%;
 }
 
@@ -82,7 +127,7 @@ button {
   height: 180px;
   right: 100px;
   bottom: -135px;
-  border: 38px solid rgba(235, 118, 91, 0.09);
+  border: 38px solid rgba(255, 122, 92, 0.09);
   border-radius: 50%;
 }
 
@@ -97,7 +142,7 @@ button {
   height: 520px;
   top: -230px;
   right: -240px;
-  border: 82px solid rgba(102, 180, 168, 0.09);
+  border: 82px solid rgba(107, 197, 184, 0.08);
 }
 
 .auth-orbit-two {
@@ -105,7 +150,7 @@ button {
   height: 340px;
   bottom: -210px;
   left: -130px;
-  border: 56px solid rgba(235, 118, 91, 0.07);
+  border: 56px solid rgba(255, 122, 92, 0.07);
 }
 
 .module-card {

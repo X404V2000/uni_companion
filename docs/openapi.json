@@ -73,6 +73,11 @@
             "title": "Today Slots",
             "type": "array"
           },
+          "total_open_tasks": {
+            "default": 0,
+            "title": "Total Open Tasks",
+            "type": "integer"
+          },
           "urgent_tasks": {
             "items": {
               "$ref": "#/components/schemas/TaskResponse"
@@ -412,6 +417,113 @@
           "chunk_count"
         ],
         "title": "BriefResponse",
+        "type": "object"
+      },
+      "ConsentHistoryEntry": {
+        "description": "One row of the append-only audit log.",
+        "properties": {
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "granted",
+          "policy_version",
+          "source",
+          "recorded_at"
+        ],
+        "title": "ConsentHistoryEntry",
+        "type": "object"
+      },
+      "ConsentHistoryResponse": {
+        "description": "Full consent history, newest first.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentHistoryEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "ConsentHistoryResponse",
+        "type": "object"
+      },
+      "ConsentRequest": {
+        "description": "Set the product-improvement consent state.\n\n`source` is a closed set, and the database enforces the same set with a\nCHECK constraint. Restricting it keeps the audit trail meaningful: a vague\nsource value would make it impossible to tell where a decision was made.",
+        "properties": {
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "onboarding",
+              "settings"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "granted",
+          "source"
+        ],
+        "title": "ConsentRequest",
+        "type": "object"
+      },
+      "ConsentState": {
+        "description": "Current consent state.\n\n`granted` is False when the user has never decided - absence of a decision\nis treated as refusal, which is the only safe default for consent.",
+        "properties": {
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "granted"
+        ],
+        "title": "ConsentState",
         "type": "object"
       },
       "CoverageByModule": {
@@ -1655,6 +1767,37 @@
           "module_code"
         ],
         "title": "ShareEventRequest",
+        "type": "object"
+      },
+      "SignalRequest": {
+        "description": "A quality signal on an AI output.\n\n`compared_with` is the digest of the alternative that this output was\npreferred over, and is REQUIRED for `preferred_over` - a preference with\nnothing to prefer over carries no information. The same rule is enforced by\na CHECK constraint in the database, so an invalid row cannot exist even if\nthis validation is bypassed.",
+        "properties": {
+          "compared_with": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compared With"
+          },
+          "signal": {
+            "enum": [
+              "helpful",
+              "unhelpful",
+              "preferred_over"
+            ],
+            "title": "Signal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal"
+        ],
+        "title": "SignalRequest",
         "type": "object"
       },
       "StarvedModule": {
@@ -3666,6 +3809,52 @@
         ]
       }
     },
+    "/api/v1/ai/summaries/{subject_hash}/signal": {
+      "post": {
+        "description": "Record a quality signal on a summary the user has already generated.\n\n`subject_hash` is the same content_hash that ai_summary_caches stores, so\nthe signal attaches to an output without any content being duplicated here.\n\nCONSENT IS REQUIRED. When the user has not consented, the request still\nreturns 204 - deliberately. Reporting \"we didn't store that\" would force\nclients to handle a refusal they cannot act on, and an observability call\nshould never surface a failure the user cannot fix. Nothing is written.\n\n204 because the client is firing a signal and moving on; there is no body\nworth returning.",
+        "operationId": "record_summary_signal_api_v1_ai_summaries__subject_hash__signal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_hash",
+            "required": true,
+            "schema": {
+              "title": "Subject Hash",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Summary Signal",
+        "tags": [
+          "AI Engine"
+        ]
+      }
+    },
     "/api/v1/ai/summarize": {
       "post": {
         "description": "Generate or retrieve a course-aware AI summary.\n\n- Identical (module, content) for the same user returns a cached summary\n  without spending a credit.\n- Otherwise one daily credit is atomically claimed and Gemini is called.",
@@ -3747,6 +3936,90 @@
           }
         },
         "summary": "Get My Activity",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    },
+    "/api/v1/analytics/consent": {
+      "get": {
+        "description": "Read the current consent state. Read-only - never mutates.",
+        "operationId": "read_consent_api_v1_analytics_consent_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Consent",
+        "tags": [
+          "Feedback"
+        ]
+      },
+      "post": {
+        "description": "Grant or withdraw consent to product-improvement data collection.\n\nGranting appends a consent row. Withdrawing appends a row AND deletes the\nuser's Category B data (usage events, improvement signals) in the same\ntransaction - either both happen or neither does. A withdrawal recorded\nwithout the delete would leave us holding data we have promised to drop.",
+        "operationId": "set_consent_api_v1_analytics_consent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Consent",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    },
+    "/api/v1/analytics/consent/history": {
+      "get": {
+        "description": "Return the append-only consent audit trail, newest first.\n\nThis endpoint is what makes the consent state PROVABLE rather than merely\nstored: it shows every grant and withdrawal with its timestamp, policy\nversion and source. A boolean column could not answer \"when did they\nwithdraw?\" - this can.",
+        "operationId": "read_consent_history_api_v1_analytics_consent_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Consent History",
         "tags": [
           "Feedback"
         ]

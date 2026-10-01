@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
+import { VitePWA } from 'vite-plugin-pwa'
+
 import siteConfiguration from './.figma/make/site.json'
 
 
@@ -12,12 +14,74 @@ export default defineConfig(({ mode }) => {
   const emitSourcemaps = mode === 'development'
 
   return {
+    // Surfaced to the app as __BUILD_STAMP__ so the header shows which build is
+    // loaded. Changes on every build, so a cached page is immediately obvious.
+    define: {
+      __BUILD_STAMP__: JSON.stringify(new Date().toISOString().slice(11, 16)),
+    },
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
     },
     plugins: [
+      // PWA must be registered before the other plugins so it can transform the
+      // generated index.html and emit the service worker + manifest. The Figma
+      // plugins below are unchanged and keep their original order - the
+      // blueprint is explicit that none may be removed or reordered.
+      VitePWA({
+        // selfDestroying unregisters any worker already installed and wipes its
+        // caches. This is what repairs a browser that is stuck on an old build:
+        // merely not registering a new worker would leave the previous one in
+        // control indefinitely, serving stale JavaScript forever.
+        //
+        // Re-enable caching once the app is stable. A PWA that silently serves
+        // an outdated bundle makes every fix invisible and is far more
+        // confusing than having no offline support at all.
+        selfDestroying: true,
+        registerType: 'autoUpdate',
+        includeAssets: ['icons/*.png', 'offline.html'],
+        manifest: {
+          name: 'Varsity Companion',
+          short_name: 'Varsity',
+          description:
+            'Course-aware AI study companion for South African university students.',
+          // Matches --color-bg in index.css: the splash screen and the app must
+          // not flash a different colour on launch.
+          theme_color: '#1C1814',
+          background_color: '#1C1814',
+          display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
+          icons: [
+            { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+            {
+              src: '/icons/icon-maskable-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          // Only the offline page and icons are cached. The app shell is NOT:
+          // caching index.html and the JS bundle is what caused the stale-build
+          // problem.
+          globPatterns: ['offline.html', 'icons/*.png'],
+          navigateFallback: '/offline.html',
+          runtimeCaching: [
+            {
+              // The API is never cached. A stale summary, deadline or module
+              // list served from cache would be indistinguishable from real
+              // data, and the user would have no way to tell it was old.
+              urlPattern: /\/api\/v1\/.*/i,
+              handler: 'NetworkOnly',
+            },
+          ],
+        },
+      }),
 react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),

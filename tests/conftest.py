@@ -29,35 +29,12 @@ import os
 import uuid
 from urllib.parse import urlparse, urlunparse
 
-# ---------------------------------------------------------------------------
-# Test-environment defaults. MUST run before `app.core.config` is imported.
-# ---------------------------------------------------------------------------
-# WHY: Settings requires JWT_SECRET_KEY, and in a normal checkout that value
-# lives in a local `.env` file, which is deliberately gitignored. So a FRESH
-# CLONE could not run the suite at all - collection failed with
-# "jwt_secret_key: Field required" and pytest exited 4 with zero tests run.
-# CI worked only because the workflow sets the variable explicitly, which hid
-# the problem from anyone working locally.
-#
-# setdefault (not assignment) so a developer's real .env, or CI's value, always
-# wins. These are obviously-fake test values; a weak-secret guard rejects
-# placeholder strings, so the value is long and clearly non-production.
-os.environ.setdefault(
-    "JWT_SECRET_KEY", "pytest-only-non-secret-key-min-32-characters-long"
-)
-# Point at a throwaway local database by default; the dedicated test-database
-# guard below still refuses to run against anything not named *_test.
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql+psycopg://app_user:app_password@127.0.0.1:5544/varsity_companion_test",
-)
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
-
-from app.core.config import settings  # noqa: E402
+from app.core.config import settings
 from app.core.rate_limiter import limiter
 from app.db.session import get_db
 from app.main import app
@@ -116,8 +93,8 @@ def _test_database_url() -> str:
         userinfo += "@"
 
     # Include the PORT. Omitting it silently redirected the suite to the
-    # default 5432 instead of the configured 5544 (the Docker Postgres),
-    # producing 275 connection-refused errors that looked like a broken
+    # default 5432 instead of whatever DATABASE_URL specified, which surfaces
+    # as a wall of connection-refused errors that look like a broken
     # environment rather than a bug in this function.
     netloc = userinfo + host
     if p.port:

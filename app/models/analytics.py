@@ -21,7 +21,17 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, SmallInteger, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    SmallInteger,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -89,3 +99,113 @@ class Feedback(Base):
 
     def __repr__(self) -> str:
         return f"<Feedback user={self.user_id} rating={self.rating}>"
+
+
+# ---------------------------------------------------------------------------
+# POPIA consent framework (Month 2, Week 3, Day 3.5)
+# ---------------------------------------------------------------------------
+# These two tables exist because consent must be provable, not merely stored,
+# and because the useful training signal is a PREFERENCE rather than content.
+# Neither table has a column that could hold user text - see
+# plan/DATA_COLLECTION_FRAMEWORK.md for the per-field justification.
+class UserConsent(Base):
+    """Append-only audit log of every consent grant and withdrawal.
+
+    Current state for a (user_id, purpose) pair is the row with the latest
+    `recorded_at`. History is retained for as long as the user exists, which is
+    what makes the state auditable: a boolean would show the present but lose
+    the fact that a withdrawal ever happened.
+    """
+
+    __tablename__ = "user_consents"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # CASCADE so the existing POPIA hard purge removes consent history with the
+    # account. An audit trail that outlives the user would itself be a breach.
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    # Extensible: 'product_improvement' today.
+    purpose: Mapped[str] = mapped_column(String(40), nullable=False)
+    # True = granted, False = withdrawn. Both are rows, so the sequence is kept.
+    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # The privacy-notice version the user actually agreed to.
+    policy_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Where the decision was made: 'onboarding' or 'settings'.
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('onboarding', 'settings')",
+            name="ck_user_consents_source_valid",
+        ),
+        Index(
+            "ix_user_consents_user_purpose_recorded",
+            "user_id",
+            "purpose",
+            text("recorded_at DESC"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        state = "granted" if self.granted else "withdrawn"
+        return f"<UserConsent user={self.user_id} purpose={self.purpose} {state}>"
+
+
+class ImprovementSignal(Base):
+    """A quality signal on an AI output. Contains NO user content.
+
+    `subject_hash` is a SHA-256 digest identifying which output was rated (for
+    summaries, the same `content_hash` already stored in ai_summary_caches).
+    `compared_with` is only set for a preference pair: the digest this output
+    was preferred over. Comparison is the signal that actually improves a
+    prompt - "this one was better" is far more informative than "this one was
+    acceptable".
+    """
+
+    __tablename__ = "improvement_signals"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    sample_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    subject_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    signal: Mapped[str] = mapped_column(String(20), nullable=False)
+    compared_with: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    __table_args__ = (
+        # Enforced in the database as well as the schema, so a script or a
+        # manual fix cannot write a value that breaks later analysis.
+        CheckConstraint(
+            "signal IN ('helpful', 'unhelpful', 'preferred_over')",
+            name="ck_improvement_signals_signal_valid",
+        ),
+        CheckConstraint(
+            "(signal = 'preferred_over' AND compared_with IS NOT NULL) "
+            "OR (signal <> 'preferred_over')",
+            name="ck_improvement_signals_preferred_requires_compared_with",
+        ),
+        Index(
+            "ix_improvement_signals_type_recorded",
+            "sample_type",
+            text("recorded_at DESC"),
+        ),
+        Index("ix_improvement_signals_subject_hash", "subject_hash"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ImprovementSignal type={self.sample_type} "
+            f"signal={self.signal} subject={self.subject_hash[:8]}>"
+        )

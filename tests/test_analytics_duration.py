@@ -26,8 +26,11 @@ def _make_user(db) -> uuid.UUID:
 
 class TestDurationRecording:
     def test_record_duration_stores_value(self, db):
+        """Duration telemetry is Category B, so it requires consent (Day 3.5)."""
         uid = _make_user(db)
-        analytics_service.record_duration(db, uid, "SUMMARIZE_DURATION", 1234)
+        analytics_service.record_duration(
+            db, uid, "SUMMARIZE_DURATION", 1234, has_consent=True
+        )
         row = db.query(UsageEvent).filter(
             UsageEvent.user_id == uid,
             UsageEvent.event_type == "SUMMARIZE_DURATION",

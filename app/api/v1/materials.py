@@ -65,7 +65,11 @@ def search_materials(
         size=size,
     )
     analytics_service.record_event(
-        db, current_user.id, "MATERIALS_SEARCHED", module_code=module_code
+        db,
+        current_user.id,
+        "MATERIALS_SEARCHED",
+        module_code=module_code,
+        has_consent=getattr(current_user, "_has_improvement_consent", False),
     )
     return result
 

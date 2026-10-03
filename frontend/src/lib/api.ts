@@ -60,6 +60,7 @@ const PRODUCTION_API_BASE = "https://uni-companion.onrender.com";
 export const API_BASE: string = resolveApiBase();
 
 const TOKEN_KEY = "vc.token";
+const REFRESH_KEY = "vc.refresh";
 
 /** Error carrying the HTTP status so callers can branch (401 vs 429 vs 503). */
 export class ApiError extends Error {
@@ -83,6 +84,41 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  // The refresh token is part of the session. Leaving it behind would let a
+  // "logged out" browser silently mint a new access token - which is not a
+  // logout, and is the same reasoning as the backend revoking on logout.
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+// ---------------------------------------------------------------------------
+// Refresh tokens
+// ---------------------------------------------------------------------------
+//
+// WHY THE WEB APP NOW KEEPS ONE
+// -----------------------------
+// Every student was logged out every 15 minutes. The backend has always been able
+// to refresh - the mobile client uses it - but the web client discarded the
+// refresh token at login and never asked for another access token. So a student
+// reading a long brief, or a tester leaving a tab open, lost their session
+// mid-task and had to retype a password.
+//
+// SECURITY NOTE, STATED PLAINLY
+// -----------------------------
+// This puts a long-lived credential in localStorage, which is readable by any
+// script on the page. That is a real trade-off and it is deliberate: the backend
+// issues one in API mode only, and the alternative - an HttpOnly cookie - is not
+// available to a client that talks to the API with a Bearer header.
+//
+// It is bounded by: rotation on every use (so a stolen token is usable once), and
+// reuse detection (so a replay revokes the whole chain and forces a fresh login).
+// Those are what make a localStorage refresh token acceptable rather than reckless.
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_KEY, token);
 }
 
 type ApiOptions = {
@@ -103,6 +139,79 @@ type ApiOptions = {
  * Returns the parsed JSON body (or null for empty/204 responses). Throws
  * `ApiError` on any non-2xx response, with the status attached.
  */
+/**
+ * THE SINGLE-FLIGHT REFRESH LOCK.
+ *
+ * WHY ONE MODULE-LEVEL PROMISE, AND NOT A CHECK PER CALLER
+ * -------------------------------------------------------
+ * When an access token expires, several in-flight requests receive 401 at the same
+ * moment - the dashboard fires three requests on mount. A naive implementation
+ * starts three refreshes. With rotation enabled on the backend, the first consumes
+ * the refresh token and the other two present a token that has ALREADY been used -
+ * which the backend correctly treats as theft, revoking the whole chain and signing
+ * the student out precisely BECAUSE they were active.
+ *
+ * So the lock is not an optimisation. It is what stops the reuse-detection
+ * mechanism from firing on the app's own concurrency.
+ *
+ * `finally` matters: if the refresh throws, the promise must still be cleared, or
+ * every later 401 awaits a settled-and-gone promise forever and the session can
+ * never recover.
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Paths that must never trigger the interceptor (or it recurses on itself). */
+const AUTH_PATHS = new Set([
+  "/api/v1/auth/login",
+  "/api/v1/auth/signup",
+  "/api/v1/auth/refresh",
+]);
+
+async function doRefresh(): Promise<boolean> {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+    };
+    if (!data.access_token || !data.refresh_token) return false;
+    // Store BOTH. The refresh token is single-use, so keeping the old one would
+    // make the very next refresh look like a replay.
+    setToken(data.access_token);
+    setRefreshToken(data.refresh_token);
+    return true;
+  } catch {
+    // A network failure is not a rejected session. Return false so the caller
+    // stops, but do NOT clear the tokens - the student may simply be offline and
+    // should stay signed in. Clearing here is how an app logs people out on a
+    // dropped connection.
+    return false;
+  }
+}
+
+/**
+ * Refresh at most once concurrently, and let every caller await the same result.
+ *
+ * Exported so the concurrency behaviour can be tested directly rather than only
+ * through a request.
+ */
+export function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
 export async function api<T = unknown>(
   path: string,
   opts: ApiOptions = {},
@@ -135,10 +244,45 @@ export async function api<T = unknown>(
     throw new ApiError("Network error", 0, null);
   }
 
-  // Any 401 outside login means the stored token is missing/expired: clear it
-  // so the app reverts to the login screen instead of looping on failures.
-  if (res.status === 401 && path !== "/api/v1/auth/login") {
-    clearToken();
+  // A 401 on a normal request means the ACCESS token expired. Try exactly one
+  // refresh, then replay this request once.
+  //
+  // WHY ONCE, WITH NO BUDGET OR QUEUE
+  // A retry loop can hammer the backend during an outage, and a queue needs a
+  // policy nobody has specified. One replay is enough for the real case - a token
+  // that expired while the student was reading - and anything more is a loop.
+  //
+  // The auth paths are exempt: a 401 from /auth/refresh means "no session", not
+  // "refresh and retry", and retrying there would recurse.
+  if (res.status === 401 && !AUTH_PATHS.has(path)) {
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      // Replay with the SAME method, headers and body. A replayed POST that loses
+      // its body is a silent data-loss bug.
+      const retryHeaders: Record<string, string> = { ...finalHeaders };
+      const fresh = getToken();
+      if (fresh) retryHeaders["Authorization"] = `Bearer ${fresh}`;
+      try {
+        res = await fetch(API_BASE + path, {
+          method,
+          headers: retryHeaders,
+          body:
+            body !== undefined
+              ? JSON.stringify(body)
+              : rawBody !== undefined
+                ? rawBody
+                : undefined,
+        });
+      } catch {
+        throw new ApiError("Network error", 0, null);
+      }
+    }
+    // Still 401 after a successful refresh, or the refresh failed: the session is
+    // genuinely over. Clearing here is correct - unlike a network failure, the
+    // server has told us the credential is no good.
+    if (res.status === 401) {
+      clearToken();
+    }
   }
 
   const text = await res.text();
@@ -196,7 +340,7 @@ export type DashboardData = {
 
 /** Log in and return the raw access token (API mode). */
 export async function login(email: string, password: string): Promise<string> {
-  const data = await api<{ access_token: string }>("/api/v1/auth/login", {
+  const data = await api<{ access_token: string; refresh_token?: string }>("/api/v1/auth/login", {
     method: "POST",
     auth: false,
     headers: { "x-auth-mode": "api" },
@@ -207,6 +351,10 @@ export async function login(email: string, password: string): Promise<string> {
   // looking screen where every request was unauthenticated - the token was
   // silently dropped and every list came back empty.
   setToken(data.access_token);
+  // Keep the long-lived half of the session, so a 15-minute access token no
+  // longer ends the session. Optional in the type because a non-API-mode client
+  // would not receive one.
+  if (data.refresh_token) setRefreshToken(data.refresh_token);
   return data.access_token;
 }
 

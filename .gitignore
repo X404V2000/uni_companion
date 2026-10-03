@@ -231,3 +231,6 @@ __marimo__/
 staging_deployement/
 # Developer scratch notes (may reference tokens/URLs).
 github.md
+
+# engineer conversations
+conversation/

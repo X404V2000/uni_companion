@@ -9,6 +9,7 @@
  * runs when the student asks for it, and browsing a module shows everything.
  */
 import { useEffect, useState } from "react";
+import { ingestModuleResources } from "../lib/api";
 
 import { Icon } from "./Icon";
 import { searchMaterials, type MaterialPage, type StudyMaterial } from "../lib/api";
@@ -34,6 +35,11 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
+  // On-demand resource fetch. Separate from `loading` because the two mean
+  // different things to a student: searching is instant, fetching real resources
+  // takes seconds and hits four external services.
+  const [fetching, setFetching] = useState(false);
+  const [fetchNote, setFetchNote] = useState("");
 
   // Default to the first module once the list is known.
   useEffect(() => {
@@ -63,6 +69,64 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
       setPage(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Fetch real resources for the selected module, then search again.
+   *
+   * WHY THIS BUTTON HAS TO EXIST
+   * ---------------------------
+   * The catalog is not seeded - nothing populates study_materials automatically -
+   * so before this existed, "Find materials" searched a table that was always
+   * empty. The ingest service was written and tested, but nothing ever called it.
+   *
+   * It is per-module and on demand rather than a scheduled bulk job, for three
+   * reasons: it needs no new infrastructure, it keeps the outbound requests
+   * proportional to what students actually use, and the backend rate-limits
+   * concurrent fetches for the same module so the upstream APIs are not hammered.
+   *
+   * The backend builds every outbound URL itself from an allow-list, so this sends
+   * only a module code - a student cannot make the server fetch an arbitrary host.
+   */
+  const fetchResources = async () => {
+    const code = (moduleCode || moduleList[0]?.code || "").trim();
+    if (code.length < 2) {
+      setError("Pick a module first.");
+      return;
+    }
+
+    setFetching(true);
+    setError("");
+    setFetchNote("");
+    try {
+      const result = await ingestModuleResources(code);
+
+      // The backend reports what it did, and the distinction matters to a student:
+      // "found 4 new" and "already up to date" are both success, but only one is
+      // worth waiting for again. A bare "Done" would hide that.
+      if (result.skipped) {
+        setFetchNote(result.message || "A fetch for this module is already running.");
+      } else if (result.inserted + result.updated === 0) {
+        setFetchNote(
+          `No new resources found for ${code}. ${
+            result.topics?.length
+              ? `Searched: ${result.topics.slice(0, 3).join(", ")}.`
+              : ""
+          }`,
+        );
+      } else {
+        setFetchNote(
+          `Added ${result.inserted} new and refreshed ${result.updated} for ${code}.`,
+        );
+      }
+
+      // Re-run the search so the new rows appear without a manual reload.
+      await run({ q: query });
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setFetching(false);
     }
   };
 
@@ -102,6 +166,23 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
                 </option>
               ))}
             </select>
+
+            {/* The button that actually fills the catalog. Placed immediately under
+                the module selector because it acts on the selected module, and a
+                student should not have to hunt for it. */}
+            <button
+              onClick={() => void fetchResources()}
+              disabled={fetching}
+              className="w-full rounded-xl border border-[var(--color-teal)] px-4 py-2.5 text-[11px] font-extrabold text-[var(--color-teal)] transition disabled:opacity-50"
+            >
+              {fetching ? "Finding resources… this takes a few seconds" : "Find resources for this module"}
+            </button>
+
+            {fetchNote && (
+              <p className="rounded-xl bg-[var(--color-raised)] px-3 py-2 text-[11px] text-[var(--color-fg-muted)]">
+                {fetchNote}
+              </p>
+            )}
 
             <div className="flex gap-2">
               <input
@@ -189,15 +270,29 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
           {searched && !loading && items.length === 0 && (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
               <p className="text-xs text-[var(--color-fg-muted)]">Nothing matched that search.</p>
-              <button
-                onClick={() => {
-                  setQuery("");
-                  void run({ q: "" });
-                }}
-                className="mt-3 text-[11px] font-bold text-[var(--color-success)] underline"
-              >
-                Show everything for this module
-              </button>
+              {query ? (
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    void run({ q: "" });
+                  }}
+                  className="mt-3 text-[11px] font-bold text-[var(--color-success)] underline"
+                >
+                  Show everything for this module
+                </button>
+              ) : (
+                /* An empty module with no query means the CATALOG has nothing for
+                   it yet, which is a different situation from "your search missed".
+                   Before this, both showed the same dead end, so a student had no
+                   way to discover that fetching is what fills the list. */
+                <button
+                  onClick={() => void fetchResources()}
+                  disabled={fetching}
+                  className="mt-3 text-[11px] font-bold text-[var(--color-teal)] underline disabled:opacity-50"
+                >
+                  {fetching ? "Finding resources…" : "Find resources for this module"}
+                </button>
+              )}
             </div>
           )}
         </>

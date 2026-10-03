@@ -89,9 +89,25 @@ enableScreens();
 //   3. On reconnect, React Query refetches automatically and the banner clears.
 onlineManager.setEventListener((setOnline) =>
   NetInfo.addEventListener((state) => {
-    // `isInternetReachable` is null while unknown; treat only an explicit true as
-    // reachable so we do not claim connectivity we have not confirmed.
-    setOnline(Boolean(state.isConnected && state.isInternetReachable !== false));
+    // DECIDE ON `isConnected` ALONE. Do not gate on `isInternetReachable`.
+    //
+    // An earlier version required both:
+    //   setOnline(Boolean(state.isConnected && state.isInternetReachable !== false))
+    // which silently disabled the whole mechanism.
+    //
+    // `isInternetReachable` is a MEASURED value: null until a probe completes, and
+    // on the web shim it is null essentially always (netinfo's nativeModule.web.js
+    // sets it to null and only ever computes `isConnected`). A three-valued flag
+    // being folded into a boolean with `!== false` reads as permissive but behaves
+    // as a gate that never opens on web, and is unreliable on native for the first
+    // moments after launch.
+    //
+    // `isConnected` is the transport-level fact - is there a network interface at
+    // all - which is exactly what "can we reach the server" needs. Gating on a
+    // not-yet-measured reachability check would also mean that on a real device the
+    // app believes it is ONLINE for the first seconds after launch even in airplane
+    // mode, which is precisely when a student would be looking.
+    setOnline(Boolean(state.isConnected));
   }),
 );
 

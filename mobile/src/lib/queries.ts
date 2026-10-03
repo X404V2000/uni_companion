@@ -85,6 +85,35 @@ const queryDefaults = {
 } as const;
 
 /**
+ * Did the request fail because the server was unreachable, or because it
+ * answered with an error?
+ *
+ * WHY THIS IS A TYPED CHECK AND NOT A STRING MATCH
+ * ------------------------------------------------
+ * The Home screen decided this by searching the rendered message:
+ *
+ *   const waking = message.toLowerCase().includes("reach the server");
+ *
+ * That is the same defect class as the sign-out branch in session.tsx. The
+ * sentence it matches lives in `describeError` below, so rewording that one
+ * string — a pure copy edit with no apparent risk — would silently stop the
+ * "waking up" state from ever appearing, and a student would be told the
+ * dashboard could not load instead of being told to wait. Nothing would fail,
+ * nothing would warn, and the only way to notice would be on a device.
+ *
+ * `status === 0` is what api.ts sets when fetch itself throws: no connection,
+ * DNS failure, CORS, or a timeout. It means the request never reached a server,
+ * which is exactly the condition that can be a cold start rather than a fault.
+ *
+ * A cold start and a genuine network failure are indistinguishable from the
+ * client, so this is deliberately named for what we KNOW (unreachable) rather
+ * than what we are guessing (asleep).
+ */
+export function isUnreachable(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 0;
+}
+
+/**
  * Turn any thrown value into something worth showing a student.
  *
  * The rule: never surface a status code, a stack trace, or the word "fetch".

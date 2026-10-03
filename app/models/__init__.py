@@ -12,6 +12,7 @@ from app.models.analytics import (
     UserConsent,
 )
 from app.models.material import StudyMaterial
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "ImprovementSignal",
     "BriefDocument",
     "BriefChunk",
+    "RefreshToken",
 ]

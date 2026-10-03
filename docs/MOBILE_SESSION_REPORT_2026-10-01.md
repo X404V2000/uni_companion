@@ -2,7 +2,14 @@
 
 **Date:** 1 October 2026
 **Repo:** `uni_companion` (canonical)
-**Commits today:** `f82a612`, `f33e5b2`, `10cf4b1`
+**Commits today:** `f82a612`, `f33e5b2`, `5a3c89d`
+
+> **Note on commit hashes.** The engineer-to-engineer conversation lives in
+> `conversation/`, which is gitignored and deliberately kept local. One message
+> was committed before that rule existed and reached GitHub; it was purged from
+> the entire history with git-filter-repo and force-pushed, which rewrote the hash
+> of the commit above (`10cf4b1` -> `5a3c89d`) and removed the conversation commit
+> entirely. The two earlier hashes in this document were unaffected.
 
 ---
 

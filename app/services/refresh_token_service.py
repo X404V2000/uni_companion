@@ -124,6 +124,14 @@ def _revoke_chain(db: Session, token: RefreshToken) -> int:
     and its ancestors would leave the stolen descendant alive.
 
     Returns the number of rows revoked, which the caller can log.
+
+    CHAIN INTEGRITY ASSUMPTION
+    --------------------------
+    The forward walk depends on `replaced_by` pointers being intact. Deleting a row
+    in the middle of a chain nulls its descendants' pointers (ON DELETE SET NULL)
+    and silently makes them unreachable - a replay would then revoke nothing. See
+    `purge_expired` for the guard that prevents this; do not add a bulk delete of
+    refresh tokens anywhere else without reading it first.
     """
     now = _utcnow()
     seen: set[uuid.UUID] = set()
@@ -274,10 +282,76 @@ def purge_expired(db: Session, older_than_days: int = 30) -> int:
     Keeps the table from growing without bound. Deliberately keeps recently-expired
     rows rather than deleting on expiry, so that a replay of a just-expired token
     can still be recognised as reuse rather than as an unknown token.
+
+    CHAIN SEVERANCE - WHY THIS IS NOT A PLAIN DELETE
+    ------------------------------------------------
+    `replaced_by` is a forward pointer with ON DELETE SET NULL, and `_revoke_chain`
+    finds descendants by `replaced_by.in_(frontier)`. So deleting a row that others
+    point AT nulls their pointers and SEVERS the chain. A severed chain is worse
+    than a broken link: the forward walk can no longer reach a live descendant, so
+    replaying an ancestor would not revoke it - and because the severed row also
+    loses its own `replaced_by`, the replay is not even recognised as REUSE. It is
+    treated as a plain expired token and NO chain revocation happens at all.
+
+    Verified by experiment: build a 3-token chain, hard-delete the middle row, then
+    replay the first. The third token remains usable.
+
+    WHY IT CANNOT FIRE TODAY
+    ------------------------
+    With a 7-day lifetime and a 30-day cutoff, no purged row can have a live
+    descendant: a descendant is issued after its ancestor and lives 7 days, so for
+    a descendant to still be valid the ancestor would have to be under ~14 days old,
+    which is nowhere near the 30-day cutoff.
+
+    WHEN IT WOULD FIRE
+    ------------------
+    The moment the cutoff stops being comfortably larger than the lifetime:
+    `purge_expired(older_than_days=7)`, or raising the refresh lifetime past 30 days.
+    Both are plausible future edits, which is why this is guarded rather than
+    documented.
+
+    THE GUARD
+    ---------
+    Only delete rows that nothing points AT, and whose `replaced_by` is either NULL
+    or already deleted. That is exactly the set of rows whose removal cannot sever
+    anything. It costs one extra NOT EXISTS clause and makes the failure mode
+    structurally impossible rather than merely unlikely.
     """
     cutoff = _utcnow() - timedelta(days=older_than_days)
-    return (
+
+    ## A row is safe to remove when neither end of its chain link would be lost:
+    ##  - nothing references it (no descendant would have its pointer nulled), AND
+    ##  - it references nothing that still exists (so removing it leaves no
+    ##    dangling pointer that a future walk would try to follow).
+    ## Rows failing either condition are retained. They are small, and correctness
+    ## beats reclaiming a few hundred bytes.
+    referenced = (
+        db.query(RefreshToken.id)
+        .filter(RefreshToken.replaced_by.isnot(None))
+        .subquery()
+    )
+
+    removable = (
         db.query(RefreshToken)
         .filter(RefreshToken.expires_at < cutoff)
+        # Nothing points at this row.
+        .filter(~RefreshToken.id.in_(db.query(RefreshToken.replaced_by).filter(
+            RefreshToken.replaced_by.isnot(None)
+        )))
+        # And it does not point at a surviving row.
+        .filter(
+            (RefreshToken.replaced_by.is_(None))
+            | (RefreshToken.replaced_by.in_(db.query(RefreshToken.id).filter(
+                RefreshToken.expires_at < cutoff
+            )))
+        )
+    )
+
+    ids = [row.id for row in removable.all()]
+    if not ids:
+        return 0
+    return (
+        db.query(RefreshToken)
+        .filter(RefreshToken.id.in_(ids))
         .delete(synchronize_session=False)
     )

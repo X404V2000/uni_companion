@@ -36,8 +36,10 @@ seconds per migration.
 | `0009` | `0008` | `0009_materials_admin_columns.py` | updated_at, created_by_user_id on materials | 2026-09-18 |
 | `0010` | `0009` | `0010_brief_documents_and_chunks.py` | RAG: brief_documents + brief_chunks tables | 2026-09-26 |
 | `0011` | `0010` | `0011_materials_module_url_index.py` | composite index `(module_code, url)` on study_materials | 2026-09-27 |
+| `0012` | `0011` | `0012_consent_and_signals.py` | POPIA: user_consents (append-only) + improvement_signals | 2026-09-29 |
+| `0013` | `0012` | `0013_refresh_tokens.py` | refresh_tokens — revocable sessions; ends the 15-minute logout | 2026-10-03 |
 
-**Head at last review:** `0011`
+**Head at last review:** `0013`
 **Locked by:** `tests/test_migration_chain.py::test_head_is_expected`
 
 > Revision `0010` was added outside the blueprint process (RAG feature, built on

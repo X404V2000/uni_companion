@@ -36,9 +36,14 @@ from app.core.rate_limiter import (
 from app.core.roles import UserRole
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import AccountDeleteRequest, LoginRequest, TokenResponse
+from app.schemas.auth import (
+    AccountDeleteRequest,
+    LoginRequest,
+    RefreshRequest,
+    TokenResponse,
+)
 from app.schemas.user import UserCreate, UserResponse
-from app.services import user_service
+from app.services import refresh_token_service, user_service
 
 # Route module router
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -162,10 +167,24 @@ async def login(
     )
 
     if _is_api_client(request):
+        # Issue the long-lived half of the session, in API mode only.
+        #
+        # WHY ONLY API MODE: browsers use the HttpOnly cookie and need no refresh
+        # token yet. A JS-readable long-lived credential in a JSON body would be a
+        # downgrade from the cookie, so only a client that can store it securely -
+        # the mobile app, in expo-secure-store - receives one.
+        raw_refresh = refresh_token_service.issue_refresh_token(
+            db,
+            user.id,
+            device_hint=(request.headers.get("user-agent") or "")[:120] or None,
+        )
+        db.commit()
         return TokenResponse(
             access_token=token,
             token_type="bearer",
             expires_in=settings.jwt_access_token_expire_minutes * 60,
+            refresh_token=raw_refresh,
+            refresh_expires_in=settings.jwt_refresh_token_expire_days * 86_400,
         )
     return UserResponse.model_validate(user)
 
@@ -196,10 +215,104 @@ async def read_me(
     },
 )
 @limiter.limit(AUTH_LOGOUT_LIMIT)
-async def logout(request: Request, response: Response):
-    """End the browser session by expiring the access-token cookie."""
+async def logout(
+    request: Request,
+    response: Response,
+    payload: RefreshRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    End the session: clear the cookie AND revoke the refresh token.
+
+    Clearing the cookie alone was sufficient when the access token was the only
+    credential, because it expired within 15 minutes regardless. Now that a refresh
+    token can live for days, a "logout" that leaves it valid is not a logout - the
+    next app open would silently mint a new access token and the student would
+    still be signed in.
+
+    Revocation is best-effort and never raises. A student trying to sign out must
+    not be blocked because we do not recognise their token.
+    """
     _clear_access_token_cookie(response)
+    if payload is not None and payload.refresh_token:
+        refresh_token_service.revoke_refresh_token(db, payload.refresh_token)
+        db.commit()
     return {"status": "ok"}
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Exchange a refresh token for a new access token",
+    description=(
+        "Rotates the session: the presented refresh token is consumed and a new "
+        "access + refresh pair is issued. Refresh tokens are single-use. Presenting "
+        "an already-consumed token is treated as theft and revokes every session for "
+        "that account, forcing a fresh sign-in."
+    ),
+    responses={
+        200: {"description": "New token pair issued"},
+        401: {"description": "Refresh token unknown, expired, revoked, or reused"},
+        429: {"description": "Too many refresh attempts"},
+    },
+)
+@limiter.limit(AUTH_CREDENTIAL_LIMIT)
+async def refresh(
+    request: Request,
+    payload: RefreshRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Rotate a refresh token. This is what ends the 15-minute logout.
+
+    A client calls this when an access token is rejected. The response is a fresh
+    pair, so a student can study for hours without retyping a password.
+
+    Both failure modes return an identical 401, deliberately: a caller must not be
+    able to tell "expired" from "replayed", because that distinction is useful to
+    someone probing the endpoint and to us only in the logs.
+    """
+    try:
+        new_refresh, user_id = refresh_token_service.rotate_refresh_token(
+            db,
+            payload.refresh_token,
+            device_hint=(request.headers.get("user-agent") or "")[:120] or None,
+        )
+    except refresh_token_service.RefreshTokenReuseError:
+        # The service has already revoked the whole chain and committed. This is a
+        # security event worth logging; the client sees the same 401 as any other
+        # failure, so the endpoint leaks nothing about which case occurred.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer valid. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+    except refresh_token_service.InvalidRefreshTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer valid. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+
+    user = db.query(User).filter(User.id == user_id).one_or_none()
+    if user is None or not user.is_active:
+        # The account was deactivated between issue and refresh. The FK cascade
+        # would normally have removed the token already; this is belt and braces.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer valid. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    db.commit()
+    return TokenResponse(
+        access_token=user_service.issue_access_token(user),
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+        refresh_token=new_refresh,
+        refresh_expires_in=settings.jwt_refresh_token_expire_days * 86_400,
+    )
 
 
 @router.delete(

@@ -31,7 +31,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, ScreenHeader } from "../../src/components/ui";
-import { describeError, useMaterialSearch, useModules } from "../../src/lib/queries";
+import { StaleBanner } from "../../src/components/StaleBanner";
+import { describeError, isOfflineNow, STALE_THRESHOLDS, isStale, useMaterialSearch, useModules } from "../../src/lib/queries";
 import { colors, moduleColor, radius, space, type as typography } from "../../src/theme";
 
 /** Material types the backend can return, with a label for the filter chip. */
@@ -45,6 +46,9 @@ const TYPE_FILTERS = [
 
 export default function MaterialsScreen() {
   const insets = useSafeAreaInsets();
+
+  // Directly known connectivity - see onlineManager in app/_layout.tsx.
+  const offline = isOfflineNow();
 
   const modules = useModules();
 
@@ -115,6 +119,13 @@ export default function MaterialsScreen() {
           />
         }
       >
+        {isStale(modules, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.materials }) ? (
+          <StaleBanner
+            onRetry={() => void modules.refetch()}
+            dataUpdatedAt={modules.dataUpdatedAt}
+          />
+        ) : null}
+
         <ScreenHeader
           title="Find Materials"
           subtitle="Curated resources for your modules"

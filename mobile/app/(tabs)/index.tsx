@@ -23,9 +23,13 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, Loading, ScreenHeader } from "../../src/components/ui";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import { WakingUp } from "../../src/components/WakingUp";
 import {
   describeError,
+  STALE_THRESHOLDS,
+  isOfflineNow,
+  isStale,
   isUnreachable,
   useActivity,
   useDashboard,
@@ -41,6 +45,10 @@ export default function HomeScreen() {
   // Set once the automatic retries are exhausted, so we stop retrying and
   // show an honest error instead of looping forever on a genuinely dead link.
   const [gaveUp, setGaveUp] = useState(false);
+
+  // Directly known connectivity, not inferred from a failed request. See the
+  // onlineManager wiring in app/_layout.tsx for why the difference matters.
+  const offline = isOfflineNow();
 
   const dashboard = useDashboard();
   const modules = useModules();
@@ -110,6 +118,13 @@ export default function HomeScreen() {
         />
       }
     >
+      {isStale(dashboard, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.home }) ? (
+        <StaleBanner
+          onRetry={() => void dashboard.refetch()}
+          dataUpdatedAt={dashboard.dataUpdatedAt}
+        />
+      ) : null}
+
       <ScreenHeader
         title="Home"
         subtitle={new Date().toLocaleDateString(undefined, {

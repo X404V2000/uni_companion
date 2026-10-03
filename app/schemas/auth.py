@@ -54,8 +54,38 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int = Field(
         default=900,
-        description="Token lifetime in seconds (15 minutes)"
+        description="Access-token lifetime in seconds (15 minutes)"
     )
+    # Long-lived, revocable credential used to obtain a new access token without
+    # re-entering a password. Optional so existing clients that only read
+    # access_token keep working unchanged.
+    #
+    # Never logged. Stored by the client in expo-secure-store (mobile) or an
+    # HttpOnly cookie (web), and presented ONLY to /auth/refresh.
+    refresh_token: str | None = Field(
+        default=None,
+        description=(
+            "Long-lived refresh credential. Present it to POST /auth/refresh to "
+            "obtain a new access token. Single-use: each refresh returns a new one."
+        ),
+    )
+    refresh_expires_in: int | None = Field(
+        default=None,
+        description="Refresh-token lifetime in seconds.",
+    )
+
+
+class RefreshRequest(BaseModel):
+    """
+    Body for POST /auth/refresh.
+
+    The refresh token travels in the BODY rather than as a bearer header, because
+    it is not an access credential - it must never be accepted anywhere that
+    accepts an access token, and keeping it out of the Authorization header makes
+    that distinction structural.
+    """
+
+    refresh_token: str = Field(..., min_length=16, max_length=512)
 
 
 class AccountDeleteRequest(BaseModel):

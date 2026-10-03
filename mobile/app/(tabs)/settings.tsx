@@ -27,14 +27,17 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
 
 import { Button, Card, EmptyState, Field, ScreenHeader } from "../../src/components/ui";
-import { getMe } from "../../src/lib/api";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import { useConsent } from "../../src/lib/consent";
 import { useSession } from "../../src/lib/session";
 import {
+  useProfile,
   describeError,
+  STALE_THRESHOLDS,
+  isOfflineNow,
+  isStale,
   signOut,
   useAddModule,
   useDeleteModule,
@@ -45,8 +48,13 @@ import { colors, moduleColor, radius, space, type as typography } from "../../sr
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
-  const profile = useQuery({ queryKey: ["me"], queryFn: getMe, staleTime: 5 * 60_000 });
+  const profile = useProfile();
   const modules = useModules();
+  // True when the server is known to be unreachable. Derived from the profile
+  // read, which Settings already makes on mount.
+  // A write is refused on unreachability, not on data age. See planner.tsx.
+  const offline = isOfflineNow();
+
   const addModule = useAddModule();
   const deleteModule = useDeleteModule();
   const consent = useConsent();
@@ -80,6 +88,12 @@ export default function SettingsScreen() {
     }
 
     try {
+// Refuse rather than fail late, for the same reason as the Planner write:
+// a module that appears added and is not is a lie the student acts on.
+if (offline) {
+  setError("Can't add a module while offline.");
+  return;
+}
       await addModule.mutateAsync({ code: c, name: n });
       setCode("");
       setName("");
@@ -99,7 +113,13 @@ export default function SettingsScreen() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => void deleteModule.mutateAsync(moduleId),
+          onPress: () => {
+            if (offline) {
+              setError("Can't delete a module while offline.");
+              return;
+            }
+            void deleteModule.mutateAsync(moduleId);
+          },
         },
       ],
     );
@@ -135,6 +155,13 @@ export default function SettingsScreen() {
           />
         }
       >
+        {isStale(profile, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.settings }) ? (
+          <StaleBanner
+            onRetry={() => void profile.refetch()}
+            dataUpdatedAt={profile.dataUpdatedAt}
+          />
+        ) : null}
+
         <ScreenHeader title="Settings" />
 
         {/* Profile — real fields from /auth/me */}

@@ -51,6 +51,12 @@ export const colors = {
   // renaming every call site.
   success: "#6BBF85",
   warning: "#E8A852",
+  // Banner background. A dark amber-tinted surface rather than a light one, so the
+  // banner belongs to the dark palette instead of punching a bright hole in it.
+  // warningText is measured against THIS, not against `bg`.
+  warningSoft: "#2A2018",
+  // Contrast-checked against warningSoft: 9.56:1. AAA for body text.
+  warningText: "#F0C089",
   danger: "#E85C6A",
 
   // Module accents, for giving each module card a consistent identity
@@ -97,6 +103,7 @@ export const type = {
   body: { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
   bodyStrong: { fontSize: 15, lineHeight: 22, fontWeight: "600" as const },
   caption: { fontSize: 13, lineHeight: 18, fontWeight: "400" as const },
+  captionStrong: { fontSize: 13, lineHeight: 18, fontWeight: "600" as const },
   label: { fontSize: 11, lineHeight: 14, fontWeight: "600" as const },
 } as const;
 

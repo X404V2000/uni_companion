@@ -22,6 +22,7 @@
  * biggest UX difference between this app and the web client.
  */
 import {
+  onlineManager,
   useMutation,
   useQuery,
   useQueryClient,
@@ -37,6 +38,7 @@ import {
   getActivity,
   getAtRisk,
   getDashboard,
+  getMe,
   getModules,
   getSummaryHistory,
   login,
@@ -44,6 +46,7 @@ import {
   signup,
   summarize,
   type AcademicTask,
+  type AccountProfile,
   type ActivityItem,
   type AtRisk,
   type DashboardData,
@@ -109,6 +112,194 @@ const queryDefaults = {
  * client, so this is deliberately named for what we KNOW (unreachable) rather
  * than what we are guessing (asleep).
  */
+/**
+ * True when a screen is showing cached data whose refresh failed.
+ *
+ * WHY BOTH CONDITIONS ARE REQUIRED
+ * --------------------------------
+ * `isError` alone means a fresh load failed - there is no data, so there is nothing
+ * to be stale, and the screen should show its empty/error state instead. `data`
+ * alone is an ordinary current render. Only together do they mean "the number on
+ * screen is last-known, not current", which is the thing a student cannot otherwise
+ * detect.
+ *
+ * WHY THIS IS A PREDICATE AND NOT INLINE CHECKS
+ * React Query already knows this; the default behaviour simply does not surface it,
+ * because a failed background refetch leaves `isError === false` when data is
+ * present. Every screen needs the same definition of "stale", so it lives here in
+ * the seam rather than being re-derived per screen and drifting.
+ *
+ * Deliberately accepts a structural type rather than `UseQueryResult` so it can be
+ * unit-tested with a plain object, and so it works for any query regardless of its
+ * data shape.
+ */
+/**
+ * Wrap a mutation so it refuses to fire when we already know the server is
+ * unreachable.
+ *
+ * WHY REFUSE RATHER THAN TRY-AND-ERROR
+ * ------------------------------------
+ * A mutation that is allowed to fire offline fails after a delay, and in that
+ * window the UI may already have shown a success confirmation - React Query runs
+ * `onSuccess` on the mutate call path for optimistic updates, and the invalidated
+ * list can re-render from cache. The student sees "saved", nothing persisted, and
+ * they find out when they miss the deadline.
+ *
+ * That is the single most serious defect found in this project: it turns the app's
+ * promise into a lie in exactly the situation the product exists for. So when we
+ * already KNOW the write cannot reach the server, we must not start it at all.
+ *
+ * WHY THIS IS A WRAPPER AND NOT A CHECK AT EACH CALL SITE
+ * Every write needs the same behaviour. Inline checks drift - one screen forgets,
+ * and a student learns "the app sometimes lies", which is worse than a consistent
+ * "the app can't save right now".
+ *
+ * WHAT THIS IS NOT
+ * It is not offline support. Nothing is queued; the write is refused and the
+ * student is told. Making the write eventually succeed is Mobile V2 and needs the
+ * outbox in design_note_offline_sync.md. Making the app stop LYING is this.
+ */
+export function useGuardedMutation<TInput, TData>(opts: {
+  mutationFn: (input: TInput) => Promise<TData>;
+  onSuccess?: (data: TData, input: TInput) => void;
+  onError?: (error: unknown, input: TInput) => void;
+  /** True when we already know the server cannot be reached. */
+  blocked: boolean;
+  /** Called instead of mutating, so the screen can explain why. */
+  onBlocked: () => void;
+}) {
+  const { mutationFn, onSuccess, onError, blocked, onBlocked } = opts;
+
+  return useMutation<TData, unknown, TInput>({
+    mutationFn: async (input: TInput) => {
+      // The refusal happens INSIDE mutationFn rather than at the call site, so
+      // there is no way to invoke the mutation and bypass the guard - including
+      // from a retry that React Query initiates itself.
+      if (blocked) {
+        onBlocked();
+        // Throwing rather than returning keeps React Query's state machine honest:
+        // nothing is recorded as success, and onSuccess cannot run.
+        throw new OfflineWriteBlocked();
+      }
+      return mutationFn(input);
+    },
+    onSuccess: (data, input) => {
+      onSuccess?.(data, input);
+    },
+    onError: (error, input) => {
+      // A blocked write is not an error the student needs to see twice - onBlocked
+      // has already explained it. Swallow this one so the screen does not render a
+      // generic failure message on top of the specific reason.
+      if (error instanceof OfflineWriteBlocked) return;
+      onError?.(error, input);
+    },
+  });
+}
+
+/**
+ * Thrown when a write is refused because the server is unreachable.
+ *
+ * A distinct type, not an Error with a message, so the caller can tell "we chose
+ * not to send this" apart from "we sent it and it failed". Those need different
+ * words: one is "can't save while offline", the other is "something went wrong".
+ */
+export class OfflineWriteBlocked extends Error {
+  constructor() {
+    super("Write refused: the server is unreachable.");
+    this.name = "OfflineWriteBlocked";
+  }
+}
+
+export function isStaleAfterFailure(q: {
+  data: unknown;
+  isError: boolean;
+}): boolean {
+  return q.data !== undefined && q.isError;
+}
+
+/**
+ * How long each screen's data may be shown before it is labelled as old.
+ *
+ * WHY THEY DIFFER, AND WHY HERE
+ * -----------------------------
+ * The consequence of being wrong is not the same everywhere. A stale deadline
+ * count is the failure this product exists to prevent; a stale resource list is
+ * mildly annoying. One global number would either over-warn on Settings - training
+ * students to ignore the banner - or under-warn on Home, which is the one that
+ * matters.
+ *
+ * Kept in one exported map rather than inline per screen so the whole policy is
+ * reviewable at a glance and changing it is one edit, not five.
+ *
+ * RATIONALE FOR EACH VALUE
+ *   Home / Planner  5 min   - deadlines; a wrong count is the product's promise
+ *                             broken. Errors compound with time.
+ *   Summaries       30 min  - history of what you already generated; not urgent.
+ *   Materials       1 hour  - curated links; they change slowly.
+ *   Settings        1 hour  - profile and module list; effectively static.
+ */
+export const STALE_THRESHOLDS = {
+  home: 5 * 60_000,
+  planner: 5 * 60_000,
+  summaries: 30 * 60_000,
+  materials: 60 * 60_000,
+  settings: 60 * 60_000,
+} as const;
+
+export type StaleScreen = keyof typeof STALE_THRESHOLDS;
+
+/**
+ * Is what is on screen old enough to matter, or unverifiable?
+ *
+ * TWO INDEPENDENT FACTS, NOT ONE
+ * ------------------------------
+ * The previous version asked only "did a refetch fail?" - which is how you learn
+ * about lost connectivity RETROACTIVELY, and only if a fetch happened to be
+ * attempted. Measured: with `staleTime: 30_000`, tapping between tabs while
+ * offline produced zero requests, so nothing failed, so nothing fired. The banner
+ * could not appear in the exact situation it was written for.
+ *
+ * This asks the two questions a student actually has:
+ *   (a) how old is this?              -> dataUpdatedAt, always available
+ *   (b) can we check it right now?    -> connectivity, known directly
+ *
+ * Either is sufficient to warn. Being offline is the stronger signal, because the
+ * student cannot resolve it by waiting; age alone is honest but recoverable.
+ */
+export function isStale(
+  q: { data?: unknown; dataUpdatedAt?: number; isError?: boolean },
+  opts: { isOffline: boolean; thresholdMs: number; now?: number },
+): boolean {
+  // Nothing on screen means nothing to be stale - the screen shows its empty or
+  // error state instead, and a banner would be noise over a blank page.
+  if (q.data === undefined) return false;
+
+  // We cannot verify what is displayed. Say so, regardless of age.
+  if (opts.isOffline) return true;
+
+  // A refetch we attempted and lost. Retained because it catches a server-side
+  // failure with good connectivity, which connectivity state cannot detect.
+  if (q.isError) return true;
+
+  // Simply old, and verified by nobody since.
+  const updatedAt = q.dataUpdatedAt ?? 0;
+  if (updatedAt <= 0) return false;
+  return (opts.now ?? Date.now()) - updatedAt > opts.thresholdMs;
+}
+
+/**
+ * Is the device offline?
+ *
+ * Deliberately its own predicate, separate from staleness, because a WRITE is
+ * refused for a different reason than a READ is labelled. A write fails because
+ * the server is unreachable - age is irrelevant to whether it can succeed. Keying
+ * the guard off staleness was the blind spot: it inherited a signal that could not
+ * fire.
+ */
+export function isOfflineNow(): boolean {
+  return onlineManager.isOnline() === false;
+}
+
 export function isUnreachable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 0;
 }
@@ -140,6 +331,24 @@ export function describeError(error: unknown): string {
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
+
+/**
+ * The signed-in student's profile.
+ *
+ * Exists so screens never import api.ts directly. The Settings screen previously
+ * did - `import { getMe } from "../../src/lib/api"` - which broke the rule that
+ * all reads go through this module. That rule is what allows the local read path
+ * to be swapped for SQLite later without touching a single screen; one direct
+ * import is the start of it eroding silently. See seam.test.ts, which now fails
+ * if it happens again.
+ */
+export function useProfile(): UseQueryResult<AccountProfile> {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
+    staleTime: 5 * 60_000,
+  });
+}
 
 export function useDashboard(): UseQueryResult<DashboardData> {
   return useQuery({

@@ -192,6 +192,59 @@ touching the dashboard. The variable still wins when set.
 
 ---
 
+### ⚠️ Render free-tier instance-hour budget — a hard constraint
+
+Render's free tier allows **750 instance-hours per month**. A keep-warm ping every
+10 minutes holds the backend awake around the clock, which uses **~720 of those
+750 hours**, leaving roughly **30 hours of headroom**.
+
+**Consequences, which are architectural rather than financial:**
+
+- **A second Render service exceeds the free tier.** Staging cannot share the free
+  tier with production. Standing up staging means either stopping the ping (the
+  75-second cold start returns) or paying.
+- **Every future "let's add a worker / queue / cron service" idea must clear this
+  budget before it is designed**, not after it is built.
+- The ping is an **optimisation, not a guarantee**. If it stops, students wait
+  again. The app therefore handles a cold start itself — see
+  `mobile/src/components/WakingUp.tsx`, which retries automatically behind a
+  visible countdown. **Do not remove that component on the assumption the ping
+  makes it unnecessary.**
+
+Measured: cold start **75.6s**, warm **~1.4s**, and **3.1s** with the ping running.
+
+### Redis is deliberately not used — a funded-scaling item
+
+`REDIS_URL` is empty everywhere. Rate-limit counters live in the app's memory.
+
+**Why this is correct today.** There is one Render instance. In-memory counters are
+per-process, and one process means one set of counters — which is exactly what the
+limiter needs. Redis would add a service to run, monitor and pay for, in exchange
+for a guarantee the current deployment does not require.
+
+**Why it is safe to switch on later.** `limits` resolves the `redis://` scheme by
+importing the `redis` package, and the limiter is constructed at **module import**
+time. Before this was addressed, setting `REDIS_URL` without that package installed
+raised `ConfigurationError` and the app **failed to start entirely** — reproduced,
+not theorised. The dependency (`redis==5.2.1`) is now in `requirements.txt` and
+guarded by `tests/test_redis_optional.py`, so setting the variable later is a
+one-line change rather than an outage.
+
+**When it becomes worth it:**
+
+| Situation | In-memory | Redis |
+|---|---|---|
+| One instance (today) | correct | unnecessary |
+| Two or more instances | ❌ each has its own counters | ✅ shared |
+| Must survive a restart | ❌ a deploy clears the throttle | ✅ persists |
+
+That restart row is the honest one: with in-memory limits, an attacker who notices a
+deploy can reset the login throttle by waiting for it. Not worth paying for now;
+worth knowing.
+
+**Decision: revisit when funded, or on the first second instance — whichever comes
+first.** Do not add it for symmetry.
+
 ## 6. Decisions and why
 
 **Modules are entered manually.** No autocomplete, no suggestion, no bundled module list.

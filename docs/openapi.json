@@ -1703,6 +1703,22 @@
         "title": "RecommendedMaterial",
         "type": "object"
       },
+      "RefreshRequest": {
+        "description": "Body for POST /auth/refresh.\n\nThe refresh token travels in the BODY rather than as a bearer header, because\nit is not an access credential - it must never be accepted anywhere that\naccepts an access token, and keeping it out of the Authorization header makes\nthat distinction structural.",
+        "properties": {
+          "refresh_token": {
+            "maxLength": 512,
+            "minLength": 16,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest",
+        "type": "object"
+      },
       "RiskCounts": {
         "properties": {
           "critical": {
@@ -2376,6 +2392,55 @@
           "end_time"
         ],
         "title": "TimetableSlotSyncItem",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "description": "Response schema when returning a raw token (non-cookie clients).\nUsed by API/mobile clients that can't handle httpOnly cookies.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "default": 900,
+            "description": "Access-token lifetime in seconds (15 minutes)",
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_expires_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Refresh-token lifetime in seconds.",
+            "title": "Refresh Expires In"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Long-lived refresh credential. Present it to POST /auth/refresh to obtain a new access token. Single-use: each refresh returns a new one.",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenResponse",
         "type": "object"
       },
       "UserCreate": {
@@ -4221,6 +4286,23 @@
       "post": {
         "description": "Idempotent sign-out. Clears the HttpOnly access cookie so shared or public machines don't carry a reusable login.",
         "operationId": "logout_api_v1_auth_logout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RefreshRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -4229,6 +4311,16 @@
               }
             },
             "description": "Signed out; cookie cleared"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           },
           "429": {
             "description": "Too many requests"
@@ -4257,6 +4349,54 @@
           }
         },
         "summary": "Get the currently authenticated user",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "description": "Rotates the session: the presented refresh token is consumed and a new access + refresh pair is issued. Refresh tokens are single-use. Presenting an already-consumed token is treated as theft and revokes every session for that account, forcing a fresh sign-in.",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "New token pair issued"
+          },
+          "401": {
+            "description": "Refresh token unknown, expired, revoked, or reused"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many refresh attempts"
+          }
+        },
+        "summary": "Exchange a refresh token for a new access token",
         "tags": [
           "Authentication"
         ]

@@ -17,14 +17,16 @@
  * list, which made adding a deadline look broken. The count line below exists
  * specifically so a truncated list cannot hide again.
  */
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, Loading, ScreenHeader } from "../../src/components/ui";
+import { WakingUp } from "../../src/components/WakingUp";
 import {
   describeError,
+  isUnreachable,
   useActivity,
   useDashboard,
   useModules,
@@ -35,6 +37,10 @@ import { colors, moduleColor, radius, space, type as typography } from "../../sr
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Set once the automatic retries are exhausted, so we stop retrying and
+  // show an honest error instead of looping forever on a genuinely dead link.
+  const [gaveUp, setGaveUp] = useState(false);
 
   const dashboard = useDashboard();
   const modules = useModules();
@@ -58,21 +64,28 @@ export default function HomeScreen() {
   }
 
   if (dashboard.isError && !dashboard.data) {
-    const message = describeError(dashboard.error);
-    // Render's free tier sleeps, and the first request can take up to a minute.
-    // Saying so is the difference between "this app is broken" and "this app is
-    // waking up". ApiError with status 0 means the request never completed.
-    const waking = message.toLowerCase().includes("reach the server");
+    // Decide by STATUS, never by the text of the message.
+    //
+    // This previously read `message.includes("reach the server")`, matching a
+    // sentence defined in describeError(). Rewording that one string - a copy
+    // edit with no apparent risk - would have silently stopped the waking state
+    // from ever appearing, and a student would have been told their dashboard
+    // "couldn't load" while it was in fact still starting. Same defect class as
+    // the sign-out branch; see isUnreachable() in src/lib/queries.ts.
+    if (isUnreachable(dashboard.error) && !gaveUp) {
+      return (
+        <WakingUp
+          onRetry={() => dashboard.refetch()}
+          onGiveUp={() => setGaveUp(true)}
+        />
+      );
+    }
 
     return (
       <View style={[styles.flex, { paddingTop: insets.top + space.lg }]}>
         <EmptyState
-          title={waking ? "Waking the server up" : "Couldn't load your dashboard"}
-          hint={
-            waking
-              ? "The free server sleeps when idle. This first load can take up to a minute — try again."
-              : message
-          }
+          title="Couldn't load your dashboard"
+          hint={describeError(dashboard.error)}
           action={<Button label="Try again" onPress={refresh} testID="retry-button" />}
         />
       </View>

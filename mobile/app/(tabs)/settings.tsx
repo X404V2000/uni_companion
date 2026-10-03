@@ -35,7 +35,9 @@ import { useSession } from "../../src/lib/session";
 import {
   useProfile,
   describeError,
-  isStaleAfterFailure,
+  STALE_THRESHOLDS,
+  isOfflineNow,
+  isStale,
   signOut,
   useAddModule,
   useDeleteModule,
@@ -50,7 +52,8 @@ export default function SettingsScreen() {
   const modules = useModules();
   // True when the server is known to be unreachable. Derived from the profile
   // read, which Settings already makes on mount.
-  const offline = isStaleAfterFailure(profile);
+  // A write is refused on unreachability, not on data age. See planner.tsx.
+  const offline = isOfflineNow();
 
   const addModule = useAddModule();
   const deleteModule = useDeleteModule();
@@ -152,7 +155,7 @@ if (offline) {
           />
         }
       >
-        {isStaleAfterFailure(profile) ? (
+        {isStale(profile, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.settings }) ? (
           <StaleBanner
             onRetry={() => void profile.refetch()}
             dataUpdatedAt={profile.dataUpdatedAt}

@@ -37,6 +37,8 @@
  */
 import { Stack } from "expo-router";
 import { enableScreens } from "react-native-screens";
+import NetInfo from "@react-native-community/netinfo";
+import { onlineManager } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -65,6 +67,34 @@ import { colors, space, type as typography } from "../src/theme";
 // Called at module scope so it runs before any navigator mounts.
 enableScreens();
 
+// WHY REAL CONNECTIVITY STATE, AND NOT A FAILED REQUEST
+// -----------------------------------------------------
+// React Query's `onlineManager` decides whether queries may run. Its built-in
+// implementation attaches to `window.addEventListener("online"/"offline")` -
+// guarded by `typeof window !== "undefined"` - which never runs on React Native.
+// So out of the box it reports online forever and does nothing on this platform.
+//
+// Without it, the app could only learn it was offline RETROACTIVELY, by attempting
+// a request and failing. Measured: with `staleTime: 30_000`, tapping between tabs
+// while offline produced ZERO requests, so nothing ever failed, so nothing ever
+// knew. The staleness banner and the write-guard both keyed off that failure and
+// therefore never fired - the app showed confidently stale data, and would have
+// let a student "save" a deadline that was never sent.
+//
+// Wiring NetInfo here fixes both halves at once:
+//   1. We KNOW we are offline the moment signal drops, without spending a request.
+//   2. Queries PAUSE (fetchStatus "paused") rather than fail, so an outage makes
+//      FEWER requests than before, not more - which matters on metered data and on
+//      Render's 720-of-750-hour free budget.
+//   3. On reconnect, React Query refetches automatically and the banner clears.
+onlineManager.setEventListener((setOnline) =>
+  NetInfo.addEventListener((state) => {
+    // `isInternetReachable` is null while unknown; treat only an explicit true as
+    // reachable so we do not claim connectivity we have not confirmed.
+    setOnline(Boolean(state.isConnected && state.isInternetReachable !== false));
+  }),
+);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -73,6 +103,10 @@ const queryClient = new QueryClient({
       // Render's free tier sleeps. This is the difference between "the app
       // loaded" and "the app failed" on the first request of a session.
       refetchOnWindowFocus: false,
+      // Ties query execution to the connectivity state wired above. While offline
+      // a query does not run at all - it reports fetchStatus "paused" - which is
+      // what makes the staleness signal immediate instead of retroactive.
+      networkMode: "online",
     },
   },
 });

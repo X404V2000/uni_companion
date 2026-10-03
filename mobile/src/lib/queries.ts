@@ -22,6 +22,7 @@
  * biggest UX difference between this app and the web client.
  */
 import {
+  onlineManager,
   useMutation,
   useQuery,
   useQueryClient,
@@ -214,6 +215,89 @@ export function isStaleAfterFailure(q: {
   isError: boolean;
 }): boolean {
   return q.data !== undefined && q.isError;
+}
+
+/**
+ * How long each screen's data may be shown before it is labelled as old.
+ *
+ * WHY THEY DIFFER, AND WHY HERE
+ * -----------------------------
+ * The consequence of being wrong is not the same everywhere. A stale deadline
+ * count is the failure this product exists to prevent; a stale resource list is
+ * mildly annoying. One global number would either over-warn on Settings - training
+ * students to ignore the banner - or under-warn on Home, which is the one that
+ * matters.
+ *
+ * Kept in one exported map rather than inline per screen so the whole policy is
+ * reviewable at a glance and changing it is one edit, not five.
+ *
+ * RATIONALE FOR EACH VALUE
+ *   Home / Planner  5 min   - deadlines; a wrong count is the product's promise
+ *                             broken. Errors compound with time.
+ *   Summaries       30 min  - history of what you already generated; not urgent.
+ *   Materials       1 hour  - curated links; they change slowly.
+ *   Settings        1 hour  - profile and module list; effectively static.
+ */
+export const STALE_THRESHOLDS = {
+  home: 5 * 60_000,
+  planner: 5 * 60_000,
+  summaries: 30 * 60_000,
+  materials: 60 * 60_000,
+  settings: 60 * 60_000,
+} as const;
+
+export type StaleScreen = keyof typeof STALE_THRESHOLDS;
+
+/**
+ * Is what is on screen old enough to matter, or unverifiable?
+ *
+ * TWO INDEPENDENT FACTS, NOT ONE
+ * ------------------------------
+ * The previous version asked only "did a refetch fail?" - which is how you learn
+ * about lost connectivity RETROACTIVELY, and only if a fetch happened to be
+ * attempted. Measured: with `staleTime: 30_000`, tapping between tabs while
+ * offline produced zero requests, so nothing failed, so nothing fired. The banner
+ * could not appear in the exact situation it was written for.
+ *
+ * This asks the two questions a student actually has:
+ *   (a) how old is this?              -> dataUpdatedAt, always available
+ *   (b) can we check it right now?    -> connectivity, known directly
+ *
+ * Either is sufficient to warn. Being offline is the stronger signal, because the
+ * student cannot resolve it by waiting; age alone is honest but recoverable.
+ */
+export function isStale(
+  q: { data?: unknown; dataUpdatedAt?: number; isError?: boolean },
+  opts: { isOffline: boolean; thresholdMs: number; now?: number },
+): boolean {
+  // Nothing on screen means nothing to be stale - the screen shows its empty or
+  // error state instead, and a banner would be noise over a blank page.
+  if (q.data === undefined) return false;
+
+  // We cannot verify what is displayed. Say so, regardless of age.
+  if (opts.isOffline) return true;
+
+  // A refetch we attempted and lost. Retained because it catches a server-side
+  // failure with good connectivity, which connectivity state cannot detect.
+  if (q.isError) return true;
+
+  // Simply old, and verified by nobody since.
+  const updatedAt = q.dataUpdatedAt ?? 0;
+  if (updatedAt <= 0) return false;
+  return (opts.now ?? Date.now()) - updatedAt > opts.thresholdMs;
+}
+
+/**
+ * Is the device offline?
+ *
+ * Deliberately its own predicate, separate from staleness, because a WRITE is
+ * refused for a different reason than a READ is labelled. A write fails because
+ * the server is unreachable - age is irrelevant to whether it can succeed. Keying
+ * the guard off staleness was the blind spot: it inherited a signal that could not
+ * fire.
+ */
+export function isOfflineNow(): boolean {
+  return onlineManager.isOnline() === false;
 }
 
 export function isUnreachable(error: unknown): boolean {

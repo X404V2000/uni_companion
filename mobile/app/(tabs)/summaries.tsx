@@ -36,7 +36,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Card, ScreenHeader } from "../../src/components/ui";
 import { StaleBanner } from "../../src/components/StaleBanner";
 import { useConsent } from "../../src/lib/consent";
-import { describeError, isStaleAfterFailure, useModules, useSummarize } from "../../src/lib/queries";
+import { describeError, isOfflineNow, STALE_THRESHOLDS, isStale, useModules, useSummarize } from "../../src/lib/queries";
 import { colors, radius, space, type as typography } from "../../src/theme";
 
 /**
@@ -50,6 +50,9 @@ const MIN_CONTENT = 20;
 
 export default function SummariesScreen() {
   const insets = useSafeAreaInsets();
+
+  // Directly known connectivity - see onlineManager in app/_layout.tsx.
+  const offline = isOfflineNow();
 
   const modules = useModules();
   const summarize = useSummarize();
@@ -118,7 +121,7 @@ export default function SummariesScreen() {
           contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
           keyboardShouldPersistTaps="handled"
         >
-          {isStaleAfterFailure(modules) ? (
+          {isStale(modules, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.summaries }) ? (
             <StaleBanner
               onRetry={() => void modules.refetch()}
               dataUpdatedAt={modules.dataUpdatedAt}

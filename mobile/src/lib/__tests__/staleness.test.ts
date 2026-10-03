@@ -21,9 +21,11 @@
  */
 import { ApiError } from "../api";
 import {
+  isStale,
   isStaleAfterFailure,
   isUnreachable,
   OfflineWriteBlocked,
+  STALE_THRESHOLDS,
 } from "../queries";
 
 describe("isStaleAfterFailure — is this number last-known or current?", () => {
@@ -99,5 +101,95 @@ describe("OfflineWriteBlocked", () => {
     expect(blocked).toBeInstanceOf(Error);
     expect(blocked.name).toBe("OfflineWriteBlocked");
     expect(blocked).not.toBeInstanceOf(ApiError);
+  });
+});
+
+
+// ===========================================================================
+// isStale — the corrected predicate
+// ===========================================================================
+//
+// WHY THIS REPLACED isStaleAfterFailure AS THE PRIMARY SIGNAL
+// ----------------------------------------------------------
+// isStaleAfterFailure asks "did a refetch fail?". Measured on a real build: with
+// `staleTime: 30_000`, tapping between tabs while offline produced ZERO requests,
+// so nothing failed, so nothing fired. The banner could not appear in the exact
+// situation it was written for.
+//
+// isStale asks the two questions a student actually has: how old is this, and can
+// we check it right now. The tests below pin BOTH, and each is shown failing
+// against the old single-condition predicate.
+
+describe("isStale — age and reachability are independent signals", () => {
+  const NOW = 1_800_000_000_000;
+  const THRESHOLD = STALE_THRESHOLDS.home; // 5 min
+
+  const fresh = { data: { tasks: 11 }, dataUpdatedAt: NOW - 1_000, isError: false };
+  const aged = { data: { tasks: 11 }, dataUpdatedAt: NOW - 10 * 60_000, isError: false };
+
+  it("is TRUE when offline, even with perfectly fresh data", () => {
+    // THE BUG THIS FIXES. The old predicate returned false here, because no
+    // refetch had failed - so an offline student saw fresh-looking data with no
+    // warning, even seconds after losing signal.
+    expect(
+      isStale(fresh, { isOffline: true, thresholdMs: THRESHOLD, now: NOW }),
+    ).toBe(true);
+  });
+
+  it("is TRUE when online but the data is older than the threshold", () => {
+    // The second signal, which the old predicate also could not see: nothing
+    // failed, the data is simply old.
+    expect(
+      isStale(aged, { isOffline: false, thresholdMs: THRESHOLD, now: NOW }),
+    ).toBe(true);
+  });
+
+  it("is FALSE when online, fresh, and no failure", () => {
+    expect(
+      isStale(fresh, { isOffline: false, thresholdMs: THRESHOLD, now: NOW }),
+    ).toBe(false);
+  });
+
+  it("is FALSE when there is nothing on screen", () => {
+    // A cold start with no data shows its empty/error state. A staleness banner
+    // over a blank page is noise, and would be a lie - there is nothing stale.
+    expect(
+      isStale(
+        { data: undefined, dataUpdatedAt: 0, isError: true },
+        { isOffline: true, thresholdMs: THRESHOLD, now: NOW },
+      ),
+    ).toBe(false);
+  });
+
+  it("still catches an attempted-and-failed refetch while online", () => {
+    // The old predicate's one useful case, retained: a server-side failure with
+    // good connectivity, which connectivity state cannot detect.
+    expect(
+      isStale(
+        { data: { x: 1 }, dataUpdatedAt: NOW - 1_000, isError: true },
+        { isOffline: false, thresholdMs: THRESHOLD, now: NOW },
+      ),
+    ).toBe(true);
+  });
+
+  it("thresholds differ by consequence, not uniformly", () => {
+    // A stale deadline count is the failure the product exists to prevent; a
+    // stale resource list is not. One global number would either over-warn on
+    // Settings - training students to ignore the banner - or under-warn on Home.
+    expect(STALE_THRESHOLDS.home).toBeLessThan(STALE_THRESHOLDS.materials);
+    expect(STALE_THRESHOLDS.planner).toBeLessThan(STALE_THRESHOLDS.summaries);
+    expect(STALE_THRESHOLDS.home).toBeGreaterThan(0);
+  });
+
+  it("treats missing dataUpdatedAt as not-aged rather than infinitely old", () => {
+    // A query that has never successfully loaded has dataUpdatedAt 0. Treating
+    // that as "infinitely old" would show a staleness banner over data that does
+    // not exist.
+    expect(
+      isStale(
+        { data: { x: 1 }, dataUpdatedAt: 0, isError: false },
+        { isOffline: false, thresholdMs: THRESHOLD, now: NOW },
+      ),
+    ).toBe(false);
   });
 });

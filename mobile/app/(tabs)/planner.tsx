@@ -30,7 +30,9 @@ import { Button, Card, EmptyState, Field, ScreenHeader } from "../../src/compone
 import { StaleBanner } from "../../src/components/StaleBanner";
 import {
   describeError,
-  isStaleAfterFailure,
+  STALE_THRESHOLDS,
+  isOfflineNow,
+  isStale,
   useAddDeadline,
   useCompleteTask,
   useDashboard,
@@ -51,7 +53,11 @@ export default function PlannerScreen() {
   // failed while we still hold cached data, the write will fail too. Checking the
   // read rather than the last write matters, because the write that would tell us
   // is the very one we are trying to prevent.
-  const offline = isStaleAfterFailure(dashboard);
+  // A write is refused because the SERVER IS UNREACHABLE, not because data is
+  // old - age is irrelevant to whether a write can succeed. Keying this off the
+  // staleness predicate was the blind spot: it inherited a signal that could not
+  // fire, so an offline write was never refused.
+  const offline = isOfflineNow();
 
   // The last refusal, so the screen can explain WHY the button is disabled rather
   // than leaving a dead control with no reason - the PROJECT_HISTORY §7 regression
@@ -153,7 +159,7 @@ export default function PlannerScreen() {
           />
         }
       >
-        {isStaleAfterFailure(dashboard) ? (
+        {isStale(dashboard, { isOffline: offline, thresholdMs: STALE_THRESHOLDS.planner }) ? (
           <StaleBanner
             onRetry={() => void dashboard.refetch()}
             dataUpdatedAt={dashboard.dataUpdatedAt}

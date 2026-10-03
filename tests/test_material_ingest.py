@@ -118,9 +118,36 @@ class TestVideoMatching:
         assert got, "a previously unseen module must still match videos"
         assert all(c.module_code == "ZZZ999" for c in got)
 
-    def test_no_topics_means_no_videos(self, monkeypatch):
+    def test_an_unseen_module_still_gets_a_search_link(self, monkeypatch):
+        """SUPERSEDES test_no_topics_means_no_videos.
+
+        That test asserted an unseen module produces NO videos, and it passed - which
+        is how the gap survived. It was also misnamed: it passed one topic, not none.
+
+        The assertion was the bug written down. This product serves thousands of
+        students across thousands of modules (SA universities, UNISA, TVET); only
+        nine hard-science keywords had curated videos, so nearly everyone saw an
+        empty list and nothing explained why.
+
+        An unseen module now gets a YouTube SEARCH link built from its topic. The
+        link is labelled as a search rather than a recommendation, because YouTube
+        chooses the results and we do not.
+        """
         monkeypatch.setattr(ingest, "_fetch", lambda url: b'{"title":"x"}')
-        assert ingest._collect_youtube("ZZZ999", ["underwater basket weaving"]) == []
+        got = ingest._collect_youtube("ZZZ999", ["underwater basket weaving"])
+        assert got, "an unseen module must not be left with no videos at all"
+        search = [c for c in got if "results?search_query=" in c.url]
+        assert search, "the fallback is a search link"
+        assert search[0].title.startswith("Search YouTube:")
+
+    def test_no_topics_still_means_no_videos(self, monkeypatch):
+        """The real empty case: with no topics there is nothing to search for.
+
+        Distinct from the above. An empty topic list is a genuine dead end and must
+        stay one - emitting a link with an empty query would be a broken result.
+        """
+        monkeypatch.setattr(ingest, "_fetch", lambda url: b'{"title":"x"}')
+        assert ingest._collect_youtube("ZZZ999", []) == []
 
 
 # ---------------------------------------------------------------------------

@@ -43,6 +43,7 @@ import logging
 import re
 import threading
 import time
+from urllib.parse import quote_plus
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -442,6 +443,54 @@ def _collect_youtube(code: str, topics: list[str]) -> list[Candidate]:
                 description=f"Video · {title[:120]} (Source: YouTube)",
             )
         )
+
+    # ALWAYS add a search link per topic, even when curated videos were found.
+    #
+    # WHY THIS EXISTS, AND WHY IT IS NOT A COMPROMISE
+    # -----------------------------------------------
+    # The buckets above cover nine hard-science keywords. This product is built for
+    # thousands of students across thousands of modules - SA universities, UNISA,
+    # TVET - so all but a handful would have matched nothing and seen no videos at
+    # all. Adding more buckets does not close that gap: roughly 80 disciplines would
+    # need researching and verifying, and a student taking Marine Biology or Setswana
+    # Syntax would still fall outside them.
+    #
+    # Asking the AI to name video IDs was tried and REVERTED. For library science it
+    # returned Rick Astley, "Me at the zoo" and Gangnam Style - real IDs, so the
+    # oEmbed check passed them, and the failure was invisible to verification. A
+    # checker can confirm an artefact is well formed; it cannot confirm it is correct.
+    #
+    # A search URL needs no key, no quota and no maintenance, and it works for every
+    # module that will ever exist - because YouTube does the matching. The YouTube
+    # Data API is not an option: search.list costs 100 of a 10,000 unit daily quota,
+    # so 100 searches a day for every user combined.
+    #
+    # The honest cost is that we do not choose the result. That is why the title says
+    # "Search YouTube" rather than presenting it as a recommendation - the student is
+    # being handed a search, and it should not pretend to be curation.
+    #
+    # Bounded to MAX_VIDEOS so a module with many derived topics does not fill the
+    # list with search links.
+    for topic in topics[:MAX_VIDEOS]:
+        cleaned = " ".join(str(topic).split())
+        if not cleaned:
+            continue
+        out.append(
+            Candidate(
+                module_code=code,
+                resource_type="YOUTUBE",
+                title=f'Search YouTube: "{cleaned}"'[:200],
+                url=(
+                    "https://www.youtube.com/results?search_query="
+                    + quote_plus(f"{cleaned} lecture tutorial")
+                ),
+                description=(
+                    f"Search · YouTube picks these results for “{cleaned}”. "
+                    "Curated videos appear above when we have them. (Source: YouTube)"
+                )[:400],
+            )
+        )
+
     return out
 
 

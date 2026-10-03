@@ -8,22 +8,32 @@
  *   3. Hold a splash until the session is known.
  *   4. Declare both route groups so the router knows they exist.
  *
- * WHY THERE IS NO ROUTE GUARD HERE ANY MORE
- * -----------------------------------------
- * The first version wrapped the groups in `Stack.Protected guard={...}`. Signing
- * in worked - the API returned 200 and the token was stored - but the tab bar
- * then navigated by URL without ever swapping the screen. Tapping Planner changed
- * the address to /planner and left Home mounted.
+ * WHY THE TAB BAR ONCE FROZE, AND WHAT ACTUALLY FIXED IT
+ * -----------------------------------------------------
+ * Symptom: tapping a tab changed the URL and the router's own state, but the
+ * visible screen never changed. Tapping Planner set the address to /planner and
+ * left Home on screen.
  *
- * The cause is the nesting: a `Tabs` navigator mounted inside a conditional
- * `Stack.Protected` group is mounted once and then does not respond to pushes
- * within itself. The guard is evaluated at the Stack level, and the Tabs
- * navigator beneath it keeps whichever screen it first resolved.
+ * THE CAUSE WAS NOT THE GUARD. THIS COMMENT PREVIOUSLY SAID IT WAS, AND THAT WAS
+ * WRONG. See `enableScreens()` below. The guard - formerly `Stack.Protected`,
+ * now the per-group redirect - was moved three times while this bug was open, and
+ * was never the cause. Do not move it again on the strength of this file.
  *
- * The fix is the pattern expo-router's own authentication guidance uses: declare
- * the groups unconditionally so both are always part of the navigation tree, and
- * redirect from inside each group's own layout. Each group then owns its own
- * decision, and the navigators beneath are never conditionally mounted.
+ * The actual cause: `react-native-screens` was a dependency but `enableScreens()`
+ * had never been called. Without it the navigators fall back to plain View
+ * stacking, an inactive scene is left MOUNTED at z-index -1 rather than detached,
+ * and it paints over the active one. Measured on a running build, the scene
+ * container held both screens at the same rect, Home at z-index -1 and the active
+ * screen at 0. Navigation was always correct; the render layer was not.
+ *
+ * Proven causal: with `enableScreens()` commented out the acceptance harness
+ * reports 4 broken tabs; with it enabled, all five render correctly. Same build,
+ * same backend, one line different.
+ *
+ * The unconditional-group pattern below is still the right shape, and it is what
+ * expo-router's authentication guidance recommends - each group owns its own
+ * redirect rather than being conditionally mounted. It simply was not the fix for
+ * this bug, and keeping it is not evidence that it was.
  */
 import { Stack } from "expo-router";
 import { enableScreens } from "react-native-screens";

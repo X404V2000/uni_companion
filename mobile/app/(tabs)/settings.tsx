@@ -30,10 +30,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button, Card, EmptyState, Field, ScreenHeader } from "../../src/components/ui";
-import { getMe } from "../../src/lib/api";
 import { useConsent } from "../../src/lib/consent";
 import { useSession } from "../../src/lib/session";
 import {
+  useProfile,
   describeError,
   signOut,
   useAddModule,
@@ -45,7 +45,7 @@ import { colors, moduleColor, radius, space, type as typography } from "../../sr
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
-  const profile = useQuery({ queryKey: ["me"], queryFn: getMe, staleTime: 5 * 60_000 });
+  const profile = useProfile();
   const modules = useModules();
   const addModule = useAddModule();
   const deleteModule = useDeleteModule();

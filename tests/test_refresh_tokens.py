@@ -391,3 +391,159 @@ def test_purge_removes_only_long_expired_rows(db):
     refresh_token_service.purge_expired(db, older_than_days=30)
     db.commit()
     assert rows_for(row_id) == 0, "a long-expired token should be removed"
+
+
+# ---------------------------------------------------------------------------
+# Chain integrity: purge must not sever a chain
+# ---------------------------------------------------------------------------
+
+
+def _chain_of(db, user_id):
+    """Return the user's tokens oldest-first, as (id, replaced_by) pairs."""
+    db.expire_all()
+    rows = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user_id)
+        .order_by(RefreshToken.created_at.asc())
+        .all()
+    )
+    return [(r.id, r.replaced_by) for r in rows]
+
+
+def test_purge_does_not_sever_a_chain(db):
+    """
+    THE LANDMINE, PINNED.
+
+    `replaced_by` is ON DELETE SET NULL and `_revoke_chain` walks forward through
+    it. A plain `DELETE WHERE expires_at < cutoff` can therefore remove a row that
+    others point at, nulling their pointers and making a live descendant
+    unreachable - after which a replay revokes nothing, and is not even recognised
+    as reuse.
+
+    This asserts the guard: purge must keep any row that a surviving row points at.
+
+    Reachability note, because severity matters: with a 7-day lifetime and a 30-day
+    cutoff this cannot fire through the normal call. The test drives it directly so
+    the guard is proven rather than assumed - the moment someone raises the lifetime
+    past the cutoff, or calls purge with a short window, this is live.
+    """
+    user = _make_user(db, f"sever-{uuid.uuid4().hex[:8]}@example.com")
+
+    # Build a three-token chain: A -> B -> C
+    rt_a = refresh_token_service.issue_refresh_token(db, user.id)
+    db.commit()
+    rt_b, _ = refresh_token_service.rotate_refresh_token(db, rt_a)
+    db.commit()
+    rt_c, _ = refresh_token_service.rotate_refresh_token(db, rt_b)
+    db.commit()
+
+    chain = _chain_of(db, user.id)
+    assert len(chain) == 3
+    id_a, id_b, id_c = chain[0][0], chain[1][0], chain[2][0]
+
+    # Age the MIDDLE row past the cutoff. This is the row whose deletion would
+    # null BOTH the ancestor's and the descendant's pointers.
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.id == id_b)
+        .update({RefreshToken.expires_at: datetime.now(UTC) - timedelta(days=90)})
+    )
+    db.commit()
+
+    refresh_token_service.purge_expired(db, older_than_days=30)
+    db.commit()
+
+    surviving = {row_id for row_id, _ in _chain_of(db, user.id)}
+    assert id_b in surviving, (
+        "purge deleted a mid-chain row. Its removal nulls the replaced_by pointers "
+        "of the rows around it, so a live descendant becomes unreachable by "
+        "_revoke_chain and a replay would revoke nothing."
+    )
+    # And the links on either side are still intact.
+    links = dict(_chain_of(db, user.id))
+    assert links[id_a] == id_b, "the ancestor must still point at the middle row"
+    assert links[id_b] == id_c, "the middle row must still point at the descendant"
+
+
+def test_purge_still_removes_a_safe_chain_origin(db):
+    """
+    The guard must not make purge useless.
+
+    The chain ORIGIN is safe to delete: nothing points at it, so nothing is
+    severed. This is the ordinary case, since expires_at is set at issue time and
+    older tokens therefore expire first.
+    """
+    user = _make_user(db, f"origin-{uuid.uuid4().hex[:8]}@example.com")
+    rt_a = refresh_token_service.issue_refresh_token(db, user.id)
+    db.commit()
+    rt_b, _ = refresh_token_service.rotate_refresh_token(db, rt_a)
+    db.commit()
+
+    chain = _chain_of(db, user.id)
+    id_a = chain[0][0]
+
+    # Age the ORIGIN past the cutoff, and the descendant too, so the "points at a
+    # surviving row" condition cannot be what saves it.
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id)
+        .update({RefreshToken.expires_at: datetime.now(UTC) - timedelta(days=90)})
+    )
+    db.commit()
+
+    removed = refresh_token_service.purge_expired(db, older_than_days=30)
+    db.commit()
+    assert removed > 0, "purge must still delete rows when it is safe to do so"
+    surviving = {row_id for row_id, _ in _chain_of(db, user.id)}
+    assert id_a not in surviving
+
+
+def test_severed_chain_is_the_failure_this_guard_prevents(db):
+    """
+    Demonstrates the failure mode directly, by severing the chain by hand.
+
+    If this test ever starts failing, the guard in purge_expired has been bypassed
+    by some other code path and the landmine is live.
+    """
+    user = _make_user(db, f"demo-sever-{uuid.uuid4().hex[:8]}@example.com")
+    rt_a = refresh_token_service.issue_refresh_token(db, user.id)
+    db.commit()
+    rt_b, _ = refresh_token_service.rotate_refresh_token(db, rt_a)
+    db.commit()
+    rt_c, _ = refresh_token_service.rotate_refresh_token(db, rt_b)
+    db.commit()
+
+    chain = _chain_of(db, user.id)
+    id_b = chain[1][0]
+
+    # Bypass the guard entirely: hard-delete the middle row.
+    db.query(RefreshToken).filter(RefreshToken.id == id_b).delete(
+        synchronize_session=False
+    )
+    db.commit()
+
+    db.expire_all()
+    tip = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id)
+        .order_by(RefreshToken.created_at.desc())
+        .first()
+    )
+    assert tip.is_usable(), "precondition: the tip is live before the replay"
+
+    # Replaying the ancestor should raise Invalid (not Reuse) once severed, and
+    # crucially must NOT revoke the tip.
+    with pytest.raises(refresh_token_service.RefreshTokenError):
+        refresh_token_service.rotate_refresh_token(db, rt_a)
+
+    db.expire_all()
+    tip_after = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id)
+        .order_by(RefreshToken.created_at.desc())
+        .first()
+    )
+    assert tip_after.is_usable(), (
+        "documents the failure: with a severed chain, replaying an ancestor does "
+        "NOT revoke the live descendant. purge_expired must never cause this."
+    )

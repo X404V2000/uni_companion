@@ -35,7 +35,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { clearToken, getMe, loadToken } from "./api";
+import { ApiError, clearToken, getMe, loadToken } from "./api";
 
 export type SessionStatus = "checking" | "signed-in" | "signed-out";
 
@@ -55,6 +55,27 @@ type SessionValue = {
   /** Re-read the profile, e.g. after editing it. */
   refreshUser: () => Promise<void>;
 };
+
+/**
+ * Did the server actually reject this credential, or did we simply fail to reach
+ * it?
+ *
+ * Exported so it can be unit-tested directly. This branch previously decided by
+ * searching the error message for the word "session", which is a defect
+ * generator: an unreachable server phrased that way would sign a student out.
+ *
+ * `status === 0` is set by api.ts when fetch itself throws - DNS failure, no
+ * connection, CORS. The request never reached the server, so the token cannot
+ * have been rejected.
+ */
+export function isRejectedCredential(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 401 || error.status === 403;
+  }
+  // Anything that is not our typed error (a TypeError from fetch, a programming
+  // error) is not evidence that the credential is bad.
+  return false;
+}
 
 const SessionContext = createContext<SessionValue | null>(null);
 
@@ -89,14 +110,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await refreshUser();
         if (!cancelled) setStatus("signed-in");
       } catch (error) {
-        // Distinguish a rejected token from an unreachable server. Only the
-        // former should sign the student out; the latter would log them out
-        // every time they open the app on a bad connection.
-        const message = error instanceof Error ? error.message : "";
-        const rejected =
-          message.toLowerCase().includes("expired") ||
-          message.toLowerCase().includes("not authenticated") ||
-          message.toLowerCase().includes("session");
+        // Distinguish a rejected token from an unreachable server, and decide by
+        // HTTP STATUS, never by the text of the message.
+        //
+        // WHY NOT STRING MATCHING
+        // -----------------------
+        // This previously read:
+        //   message.includes("expired") || ... .includes("session")
+        // which is wrong in both directions. A network error phrased "Failed to
+        // reach session service" contains "session" and would sign the student
+        // out on a connection blip. A 401 whose body happens to use none of
+        // those words signs them out never, leaving them stuck on an
+        // authenticated screen that cannot load. An error message is prose, and
+        // prose changes; a status code is a contract.
+        //
+        // ApiError carries `status` and is set to 0 for a request that never
+        // completed. 401/403 mean the credential is genuinely rejected; anything
+        // else, including a timeout or a 5xx, is treated as "the server is
+        // unreachable" and the student stays signed in.
+        const rejected = isRejectedCredential(error);
 
         if (rejected) {
           await clearToken();

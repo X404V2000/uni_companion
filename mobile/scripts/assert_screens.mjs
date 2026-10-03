@@ -15,7 +15,25 @@
  * the ScreenHeader title, which is unique per screen and cannot be satisfied by
  * navigation chrome.
  */
-import { chromium } from "playwright";
+// Playwright is a peer requirement, deliberately not a hard dependency yet
+// (see conversation/system_design_and_architectural_engineer_2.md §5). Fail with
+// an explanation rather than a module-resolution stack trace.
+let chromium;
+try {
+  ({ chromium } = await import("playwright"));
+} catch {
+  console.error(
+    [
+      "This harness needs Playwright, which is not installed in mobile/.",
+      "",
+      "  npm install --save-dev playwright && npx playwright install chromium",
+      "",
+      "Do not add it without the founder's approval. It is a dev-only tool and is",
+      "never shipped in the app.",
+    ].join("\n"),
+  );
+  process.exit(2);
+}
 
 // RUN:
 //   APP_URL=<served web build> \
@@ -64,7 +82,7 @@ await page.waitForTimeout(3000);
 await page.locator("input").first().fill(TEST_EMAIL);
 await page.locator('input[type="password"]').first().fill(TEST_PASSWORD);
 await page.locator("button").last().click();
-await page.waitForTimeout(75000);
+await page.waitForTimeout(130000);
 
 let failures = 0;
 for (const { tab, first } of EXPECTED) {

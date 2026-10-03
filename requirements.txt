@@ -35,6 +35,24 @@ email-validator==2.2.0
 # ___ Security & Rate Limiting ___
 slowapi==0.1.9
 # Rate limit middleware - protects against brute-force and DoS attacks.
+
+redis==5.2.1
+# Backs slowapi's rate-limit counters so they survive a restart and are shared
+# across instances. OPTIONAL AT RUNTIME: app/core/rate_limiter.py only uses it
+# when REDIS_URL is set, and falls back to in-memory storage otherwise.
+#
+# THIS IS NOT OPTIONAL-AT-BUILD. The limiter is constructed at import time, so
+# if REDIS_URL is set and this package is absent, `Limiter(...)` raises
+# ConfigurationError and the app fails to start entirely. That was reproduced:
+# importing app.main with REDIS_URL pointing at a Redis and no redis client
+# installed produced exactly that. Installing this is what makes setting
+# REDIS_URL safe.
+#
+# WHY 5.2.1 AND NOT `slowapi[redis]`: slowapi's own extra pins redis to
+# >=3.4.1,<4.0.0, while `limits` 5.8 - which is what actually opens the
+# connection - requires >3,<8.0.0. Installing slowapi's extra would therefore
+# give a version limits rejects. 5.2.1 satisfies limits, and slowapi never
+# imports redis itself; it delegates to limits.
 # ___ Password hashing ___
 bcrypt==4.2.1
 # ___ JWT Authentication ___

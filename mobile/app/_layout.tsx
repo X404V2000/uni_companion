@@ -26,6 +26,7 @@
  * decision, and the navigators beneath are never conditionally mounted.
  */
 import { Stack } from "expo-router";
+import { enableScreens } from "react-native-screens";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -38,6 +39,22 @@ import { colors, space, type as typography } from "../src/theme";
  * One client for the whole app, created outside the component so a re-render can
  * never produce a second cache and silently duplicate every query.
  */
+// WHY THIS CALL MATTERS
+// ---------------------
+// react-native-screens was a dependency but was never enabled. Without it the
+// navigators fall back to plain View stacking, and an inactive screen is left
+// mounted with z-index -1 rather than being detached. Measured on a running
+// build: the inactive Home screen sat at z-index -1 and still painted over the
+// active one, so tapping a tab changed the router state (proven: usePathname
+// reported /settings) while the visible screen never changed.
+//
+// enableScreens() switches the navigators to real screen containers, which
+// detach the inactive scene instead of layering it. This is the documented
+// requirement for expo-router and was simply missing.
+//
+// Called at module scope so it runs before any navigator mounts.
+enableScreens();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -90,7 +107,7 @@ function RootNavigator() {
         or unmounting them here.
       */}
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)/sign-in" />
+      <Stack.Screen name="(auth)" />
     </Stack>
   );
 }

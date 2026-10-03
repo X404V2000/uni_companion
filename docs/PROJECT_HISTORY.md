@@ -192,6 +192,27 @@ touching the dashboard. The variable still wins when set.
 
 ---
 
+### ⚠️ Render free-tier instance-hour budget — a hard constraint
+
+Render's free tier allows **750 instance-hours per month**. A keep-warm ping every
+10 minutes holds the backend awake around the clock, which uses **~720 of those
+750 hours**, leaving roughly **30 hours of headroom**.
+
+**Consequences, which are architectural rather than financial:**
+
+- **A second Render service exceeds the free tier.** Staging cannot share the free
+  tier with production. Standing up staging means either stopping the ping (the
+  75-second cold start returns) or paying.
+- **Every future "let's add a worker / queue / cron service" idea must clear this
+  budget before it is designed**, not after it is built.
+- The ping is an **optimisation, not a guarantee**. If it stops, students wait
+  again. The app therefore handles a cold start itself — see
+  `mobile/src/components/WakingUp.tsx`, which retries automatically behind a
+  visible countdown. **Do not remove that component on the assumption the ping
+  makes it unnecessary.**
+
+Measured: cold start **75.6s**, warm **~1.4s**, and **3.1s** with the ping running.
+
 ## 6. Decisions and why
 
 **Modules are entered manually.** No autocomplete, no suggestion, no bundled module list.

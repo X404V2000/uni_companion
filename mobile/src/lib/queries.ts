@@ -37,6 +37,7 @@ import {
   getActivity,
   getAtRisk,
   getDashboard,
+  getMe,
   getModules,
   getSummaryHistory,
   login,
@@ -44,6 +45,7 @@ import {
   signup,
   summarize,
   type AcademicTask,
+  type AccountProfile,
   type ActivityItem,
   type AtRisk,
   type DashboardData,
@@ -140,6 +142,24 @@ export function describeError(error: unknown): string {
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
+
+/**
+ * The signed-in student's profile.
+ *
+ * Exists so screens never import api.ts directly. The Settings screen previously
+ * did - `import { getMe } from "../../src/lib/api"` - which broke the rule that
+ * all reads go through this module. That rule is what allows the local read path
+ * to be swapped for SQLite later without touching a single screen; one direct
+ * import is the start of it eroding silently. See seam.test.ts, which now fails
+ * if it happens again.
+ */
+export function useProfile(): UseQueryResult<AccountProfile> {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
+    staleTime: 5 * 60_000,
+  });
+}
 
 export function useDashboard(): UseQueryResult<DashboardData> {
   return useQuery({

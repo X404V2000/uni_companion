@@ -56,11 +56,29 @@ function SummariesTab({
     } catch (err) {
       setFileText("");
       setFileName("");
-      // UnsupportedFileError carries a message written for the student ("PDF
-      // and Word files..." style); anything else is unexpected and generic.
-      setError(
-        err instanceof UnsupportedFileError ? err.message : "Could not read that file.",
-      );
+      // UnsupportedFileError carries a message written for the student. Anything
+      // else is unexpected, and the old fallback - "Could not read that file." -
+      // was actively harmful: it was identical for a password-protected PDF, a
+      // corrupt DOCX and a mislabelled .doc, so a student could not tell what to
+      // do and neither could we when they reported it.
+      //
+      // So the fallback now NAMES THE FILE AND THE ERROR TYPE. A student can act
+      // on "report.pdf (InvalidPDFException)"; a tester can paste it verbatim; and
+      // we can diagnose without asking them to reproduce it.
+      if (err instanceof UnsupportedFileError) {
+        setError(err.message);
+      } else {
+        const kind = (err as { name?: string })?.name ?? "Unknown error";
+        const detail = (err as { message?: string })?.message ?? "";
+        setError(
+          `Could not read “${file.name}” (${kind}). ` +
+            (detail ? `${detail.slice(0, 120)} — ` : "") +
+            "Try a different file, or paste the text instead.",
+        );
+        // Also to the console, because the on-screen message is truncated and a
+        // developer with devtools open should get the whole thing.
+        console.error("[summaries] file read failed", { name: file.name, size: file.size, type: file.type }, err);
+      }
     } finally {
       setReading(false);
       // Reset so choosing the same file again still fires onChange.

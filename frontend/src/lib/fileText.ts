@@ -87,14 +87,55 @@ function readAsText(file: File): Promise<string> {
  * work (and the prompt size) for very large documents.
  */
 async function readPdf(file: File, maxPages = 40): Promise<string> {
-  // Lazy import: pulls the pdfjs chunk (and its worker) only on first PDF.
-  const pdfjsLib = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url"))
-    .default;
-  pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  let pdfjsLib;
+  try {
+    // Lazy import: pulls the pdfjs chunk (and its worker) only on first PDF.
+    pdfjsLib = await import("pdfjs-dist");
+    const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url"))
+      .default;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  } catch {
+    // The chunk failed to load - usually an interrupted connection, since the pdf
+    // worker is only fetched on first use. Saying so is actionable; "could not
+    // read that file" is not.
+    throw new UnsupportedFileError(
+      "The PDF reader could not be loaded. Check your connection and try again.",
+    );
+  }
 
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  } catch (err) {
+    // WHY THIS CATCH EXISTS, AND WHY THE MESSAGE MATTERS
+    // --------------------------------------------------
+    // pdfjs throws several distinct errors, and until this was added they all
+    // escaped to the caller, which showed one generic sentence: "Could not read
+    // that file." That message was the same for a password-protected PDF, a
+    // corrupt one, and a .doc renamed to .pdf - so a student had no idea what to
+    // do, and neither did we when they reported it.
+    //
+    // Each case below has a different remedy, so each gets its own sentence.
+    const name = (err as { name?: string })?.name ?? "";
+    const raw = (err as { message?: string })?.message ?? "";
+    if (name === "PasswordException" || /password/i.test(raw)) {
+      throw new UnsupportedFileError(
+        "That PDF is password-protected. Remove the password, or copy the text " +
+          "into the “Paste text” box.",
+      );
+    }
+    if (name === "InvalidPDFException" || /invalid pdf|not a pdf/i.test(raw)) {
+      throw new UnsupportedFileError(
+        "That file isn't a readable PDF — it may be damaged, or renamed from " +
+          "another format. Try exporting it to PDF again.",
+      );
+    }
+    throw new UnsupportedFileError(
+      "That PDF could not be opened. It may be damaged. Try exporting it again, " +
+        "or paste the text instead.",
+    );
+  }
   const limit = Math.min(pdf.numPages, maxPages);
   const parts: string[] = [];
   for (let pageNo = 1; pageNo <= limit; pageNo += 1) {
@@ -116,9 +157,37 @@ async function readPdf(file: File, maxPages = 40): Promise<string> {
 
 /** Extract text from a Word .docx using mammoth (lazy-loaded). */
 async function readDocx(file: File): Promise<string> {
-  const mammoth = (await import("mammoth")).default;
+  let mammoth;
+  try {
+    mammoth = (await import("mammoth")).default;
+  } catch {
+    throw new UnsupportedFileError(
+      "The Word reader could not be loaded. Check your connection and try again.",
+    );
+  }
+
   const buf = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer: buf });
+  let result;
+  try {
+    result = await mammoth.extractRawText({ arrayBuffer: buf });
+  } catch (err) {
+    // .docx is a ZIP archive. A file named .docx that is actually a legacy .doc,
+    // or a partially-downloaded one, fails to unzip - and mammoth's own error is
+    // about zip entries, which means nothing to a student. Naming the likely
+    // cause is the difference between a dead end and a fix.
+    const raw = (err as { message?: string })?.message ?? "";
+    if (/zip|central directory|end of central/i.test(raw)) {
+      throw new UnsupportedFileError(
+        "That Word file appears to be damaged or saved in an older format. " +
+          "Open it in Word and use Save As → .docx, then try again.",
+      );
+    }
+    throw new UnsupportedFileError(
+      "That Word document could not be opened. Try re-saving it as .docx, or " +
+        "paste the text instead.",
+    );
+  }
+
   const text = (result.value ?? "").trim();
   if (!text) {
     throw new UnsupportedFileError("That document appears to be empty.");

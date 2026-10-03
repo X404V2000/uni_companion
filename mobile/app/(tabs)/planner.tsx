@@ -27,8 +27,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, Field, ScreenHeader } from "../../src/components/ui";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import {
   describeError,
+  isStaleAfterFailure,
   useAddDeadline,
   useCompleteTask,
   useDashboard,
@@ -42,6 +44,20 @@ export default function PlannerScreen() {
 
   const dashboard = useDashboard();
   const modules = useModules();
+  // True when we already know the server cannot be reached.
+  //
+  // Derived from the primary read being stale-after-failure. That is the honest
+  // signal available without a connectivity library: if the read we just made
+  // failed while we still hold cached data, the write will fail too. Checking the
+  // read rather than the last write matters, because the write that would tell us
+  // is the very one we are trying to prevent.
+  const offline = isStaleAfterFailure(dashboard);
+
+  // The last refusal, so the screen can explain WHY the button is disabled rather
+  // than leaving a dead control with no reason - the PROJECT_HISTORY §7 regression
+  // is exactly a control that looked actionable and did nothing.
+  const [blockedReason, setBlockedReason] = useState("");
+
   const addDeadline = useAddDeadline();
   const completeTask = useCompleteTask();
 
@@ -94,6 +110,20 @@ export default function PlannerScreen() {
       return;
     }
 
+    // REFUSE BEFORE SENDING, NOT AFTER FAILING.
+    //
+    // If this mutation were allowed to run offline it would fail after a delay -
+    // and the confirmation below would already have been reached in the
+    // optimistic case, telling the student "Saved" for something that was never
+    // persisted. They would find out when they missed the deadline, which is the
+    // single worst failure this product can produce.
+    if (offline) {
+      const reason = "Can't save while offline. Your deadline has not been added.";
+      setError(reason);
+      setBlockedReason(reason);
+      return;
+    }
+
     try {
       await addDeadline.mutateAsync({
         moduleId: selected.id,
@@ -102,6 +132,7 @@ export default function PlannerScreen() {
       });
       resetForm();
       setShowForm(false);
+      setBlockedReason("");
       // Named explicitly so there is no doubt the save worked.
       setSaved(`Saved "${title.trim()}".`);
     } catch (e) {
@@ -122,6 +153,13 @@ export default function PlannerScreen() {
           />
         }
       >
+        {isStaleAfterFailure(dashboard) ? (
+          <StaleBanner
+            onRetry={() => void dashboard.refetch()}
+            dataUpdatedAt={dashboard.dataUpdatedAt}
+          />
+        ) : null}
+
         <ScreenHeader
           title="Planner"
           subtitle={
@@ -131,7 +169,7 @@ export default function PlannerScreen() {
           }
           right={
             <Button
-              label="Add"
+              label={offline ? "Offline" : "Add"}
               onPress={() => setShowForm(true)}
               testID="add-deadline-button"
             />

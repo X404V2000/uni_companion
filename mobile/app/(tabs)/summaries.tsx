@@ -34,8 +34,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, ScreenHeader } from "../../src/components/ui";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import { useConsent } from "../../src/lib/consent";
-import { describeError, useModules, useSummarize } from "../../src/lib/queries";
+import { describeError, isStaleAfterFailure, useModules, useSummarize } from "../../src/lib/queries";
 import { colors, radius, space, type as typography } from "../../src/theme";
 
 /**
@@ -117,6 +118,13 @@ export default function SummariesScreen() {
           contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
           keyboardShouldPersistTaps="handled"
         >
+          {isStaleAfterFailure(modules) ? (
+            <StaleBanner
+              onRetry={() => void modules.refetch()}
+              dataUpdatedAt={modules.dataUpdatedAt}
+            />
+          ) : null}
+
           <ScreenHeader
             title="AI Summaries"
             subtitle="Paste your notes and get a structured study guide"

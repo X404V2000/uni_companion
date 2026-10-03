@@ -23,9 +23,11 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, Loading, ScreenHeader } from "../../src/components/ui";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import { WakingUp } from "../../src/components/WakingUp";
 import {
   describeError,
+  isStaleAfterFailure,
   isUnreachable,
   useActivity,
   useDashboard,
@@ -110,6 +112,13 @@ export default function HomeScreen() {
         />
       }
     >
+      {isStaleAfterFailure(dashboard) ? (
+        <StaleBanner
+          onRetry={() => void dashboard.refetch()}
+          dataUpdatedAt={dashboard.dataUpdatedAt}
+        />
+      ) : null}
+
       <ScreenHeader
         title="Home"
         subtitle={new Date().toLocaleDateString(undefined, {

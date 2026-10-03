@@ -111,6 +111,111 @@ const queryDefaults = {
  * client, so this is deliberately named for what we KNOW (unreachable) rather
  * than what we are guessing (asleep).
  */
+/**
+ * True when a screen is showing cached data whose refresh failed.
+ *
+ * WHY BOTH CONDITIONS ARE REQUIRED
+ * --------------------------------
+ * `isError` alone means a fresh load failed - there is no data, so there is nothing
+ * to be stale, and the screen should show its empty/error state instead. `data`
+ * alone is an ordinary current render. Only together do they mean "the number on
+ * screen is last-known, not current", which is the thing a student cannot otherwise
+ * detect.
+ *
+ * WHY THIS IS A PREDICATE AND NOT INLINE CHECKS
+ * React Query already knows this; the default behaviour simply does not surface it,
+ * because a failed background refetch leaves `isError === false` when data is
+ * present. Every screen needs the same definition of "stale", so it lives here in
+ * the seam rather than being re-derived per screen and drifting.
+ *
+ * Deliberately accepts a structural type rather than `UseQueryResult` so it can be
+ * unit-tested with a plain object, and so it works for any query regardless of its
+ * data shape.
+ */
+/**
+ * Wrap a mutation so it refuses to fire when we already know the server is
+ * unreachable.
+ *
+ * WHY REFUSE RATHER THAN TRY-AND-ERROR
+ * ------------------------------------
+ * A mutation that is allowed to fire offline fails after a delay, and in that
+ * window the UI may already have shown a success confirmation - React Query runs
+ * `onSuccess` on the mutate call path for optimistic updates, and the invalidated
+ * list can re-render from cache. The student sees "saved", nothing persisted, and
+ * they find out when they miss the deadline.
+ *
+ * That is the single most serious defect found in this project: it turns the app's
+ * promise into a lie in exactly the situation the product exists for. So when we
+ * already KNOW the write cannot reach the server, we must not start it at all.
+ *
+ * WHY THIS IS A WRAPPER AND NOT A CHECK AT EACH CALL SITE
+ * Every write needs the same behaviour. Inline checks drift - one screen forgets,
+ * and a student learns "the app sometimes lies", which is worse than a consistent
+ * "the app can't save right now".
+ *
+ * WHAT THIS IS NOT
+ * It is not offline support. Nothing is queued; the write is refused and the
+ * student is told. Making the write eventually succeed is Mobile V2 and needs the
+ * outbox in design_note_offline_sync.md. Making the app stop LYING is this.
+ */
+export function useGuardedMutation<TInput, TData>(opts: {
+  mutationFn: (input: TInput) => Promise<TData>;
+  onSuccess?: (data: TData, input: TInput) => void;
+  onError?: (error: unknown, input: TInput) => void;
+  /** True when we already know the server cannot be reached. */
+  blocked: boolean;
+  /** Called instead of mutating, so the screen can explain why. */
+  onBlocked: () => void;
+}) {
+  const { mutationFn, onSuccess, onError, blocked, onBlocked } = opts;
+
+  return useMutation<TData, unknown, TInput>({
+    mutationFn: async (input: TInput) => {
+      // The refusal happens INSIDE mutationFn rather than at the call site, so
+      // there is no way to invoke the mutation and bypass the guard - including
+      // from a retry that React Query initiates itself.
+      if (blocked) {
+        onBlocked();
+        // Throwing rather than returning keeps React Query's state machine honest:
+        // nothing is recorded as success, and onSuccess cannot run.
+        throw new OfflineWriteBlocked();
+      }
+      return mutationFn(input);
+    },
+    onSuccess: (data, input) => {
+      onSuccess?.(data, input);
+    },
+    onError: (error, input) => {
+      // A blocked write is not an error the student needs to see twice - onBlocked
+      // has already explained it. Swallow this one so the screen does not render a
+      // generic failure message on top of the specific reason.
+      if (error instanceof OfflineWriteBlocked) return;
+      onError?.(error, input);
+    },
+  });
+}
+
+/**
+ * Thrown when a write is refused because the server is unreachable.
+ *
+ * A distinct type, not an Error with a message, so the caller can tell "we chose
+ * not to send this" apart from "we sent it and it failed". Those need different
+ * words: one is "can't save while offline", the other is "something went wrong".
+ */
+export class OfflineWriteBlocked extends Error {
+  constructor() {
+    super("Write refused: the server is unreachable.");
+    this.name = "OfflineWriteBlocked";
+  }
+}
+
+export function isStaleAfterFailure(q: {
+  data: unknown;
+  isError: boolean;
+}): boolean {
+  return q.data !== undefined && q.isError;
+}
+
 export function isUnreachable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 0;
 }

@@ -27,14 +27,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
 
 import { Button, Card, EmptyState, Field, ScreenHeader } from "../../src/components/ui";
+import { StaleBanner } from "../../src/components/StaleBanner";
 import { useConsent } from "../../src/lib/consent";
 import { useSession } from "../../src/lib/session";
 import {
   useProfile,
   describeError,
+  isStaleAfterFailure,
   signOut,
   useAddModule,
   useDeleteModule,
@@ -47,6 +48,10 @@ export default function SettingsScreen() {
 
   const profile = useProfile();
   const modules = useModules();
+  // True when the server is known to be unreachable. Derived from the profile
+  // read, which Settings already makes on mount.
+  const offline = isStaleAfterFailure(profile);
+
   const addModule = useAddModule();
   const deleteModule = useDeleteModule();
   const consent = useConsent();
@@ -80,6 +85,12 @@ export default function SettingsScreen() {
     }
 
     try {
+// Refuse rather than fail late, for the same reason as the Planner write:
+// a module that appears added and is not is a lie the student acts on.
+if (offline) {
+  setError("Can't add a module while offline.");
+  return;
+}
       await addModule.mutateAsync({ code: c, name: n });
       setCode("");
       setName("");
@@ -99,7 +110,13 @@ export default function SettingsScreen() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => void deleteModule.mutateAsync(moduleId),
+          onPress: () => {
+            if (offline) {
+              setError("Can't delete a module while offline.");
+              return;
+            }
+            void deleteModule.mutateAsync(moduleId);
+          },
         },
       ],
     );
@@ -135,6 +152,13 @@ export default function SettingsScreen() {
           />
         }
       >
+        {isStaleAfterFailure(profile) ? (
+          <StaleBanner
+            onRetry={() => void profile.refetch()}
+            dataUpdatedAt={profile.dataUpdatedAt}
+          />
+        ) : null}
+
         <ScreenHeader title="Settings" />
 
         {/* Profile — real fields from /auth/me */}

@@ -31,7 +31,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, ScreenHeader } from "../../src/components/ui";
-import { describeError, useMaterialSearch, useModules } from "../../src/lib/queries";
+import { StaleBanner } from "../../src/components/StaleBanner";
+import { describeError, isStaleAfterFailure, useMaterialSearch, useModules } from "../../src/lib/queries";
 import { colors, moduleColor, radius, space, type as typography } from "../../src/theme";
 
 /** Material types the backend can return, with a label for the filter chip. */
@@ -115,6 +116,13 @@ export default function MaterialsScreen() {
           />
         }
       >
+        {isStaleAfterFailure(modules) ? (
+          <StaleBanner
+            onRetry={() => void modules.refetch()}
+            dataUpdatedAt={modules.dataUpdatedAt}
+          />
+        ) : null}
+
         <ScreenHeader
           title="Find Materials"
           subtitle="Curated resources for your modules"

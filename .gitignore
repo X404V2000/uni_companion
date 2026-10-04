@@ -234,3 +234,8 @@ github.md
 
 # engineer conversations
 conversation/
+
+# planning phase — purged from history on 2026-10-04.
+# The files remain on disk for local reference but must never be re-committed.
+# This rule is load-bearing: without it, a single `git add -A` re-publishes all 91.
+plan/

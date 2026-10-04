@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "./components/Icon";
 import AuthPage from "./components/AuthPage";
-import { getModules, type AccountProfile } from "./lib/api";
+import { getModules, logout, type AccountProfile } from "./lib/api";
 import { forgetSession, restoreSession } from "./lib/session";
 import OverviewTab from "./components/OverviewTab";
 // PlaceholderTab is intentionally retained but no longer imported.
@@ -160,7 +160,20 @@ export default function App() {
     await reloadModules();
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    // SERVER FIRST, THEN LOCAL. The order is load-bearing.
+    //
+    // `logout()` revokes the refresh token and clears the cookie. If the browser were
+    // cleared first and the call then failed, the server session would be orphaned AND
+    // the student already signed out - with no token left to revoke it with, so no retry
+    // is possible. Telling the server first means a failure leaves the credential where
+    // the next attempt can still reach it.
+    //
+    // `logout()` never throws: it swallows a network failure on purpose. A student on a
+    // dead connection must still be able to sign out, and staying "signed in" because the
+    // server is unreachable is the worse of the two failures.
+    await logout();
+
     forgetSession();
     setProfile(null);
     setModuleList([]);
@@ -221,7 +234,12 @@ export default function App() {
           </div>
           <button
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-surface)] text-[11px] font-extrabold text-white"
-            onClick={signOut}
+            // Wrapped rather than passed directly: signOut is async only because it
+            // awaits the server-side revoke. React discards the promise, so an escaping
+            // rejection would be an unhandled rejection - harmless here because logout()
+            // swallows network errors, but the void makes that explicit rather than
+            // relying on a property of another module.
+            onClick={() => void signOut()}
             aria-label="Sign out"
             title="Sign out"
           >

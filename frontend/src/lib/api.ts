@@ -338,6 +338,44 @@ export type DashboardData = {
   total_open_tasks?: number;
 };
 
+/**
+ * End the session server-side: clears the auth cookie and REVOKES the refresh token.
+ *
+ * WHY THIS EXISTS, AND WHY THE ORDER AT THE CALL SITE MATTERS
+ * ----------------------------------------------------------
+ * Signing out used to be local-only - `forgetSession()` cleared the browser and nothing
+ * was told to the server. That was adequate when the access token was the only
+ * credential, because it expired within 15 minutes regardless.
+ *
+ * It stopped being adequate at migration `0013`, which introduced a 7-day refresh token.
+ * A logout that never reaches the server leaves that token VALID, so the next time the
+ * app opens it can silently mint a new access token - the student signed out and is still
+ * signed in. On a shared machine, which is what a campus lab is, that is someone else
+ * holding a live session.
+ *
+ * The refresh token is sent in the body for that reason: the cookie is cleared either
+ * way, but only a token the server recognises can be revoked. Called without it, the
+ * request still succeeds and still clears the cookie - it just cannot revoke, so a stale
+ * token would survive until it expires on its own.
+ *
+ * Best-effort by design, and it never throws on the network. A student on a dead
+ * connection must still be able to sign out; the alternative - staying "signed in"
+ * because the server is unreachable - is the worse failure.
+ */
+export async function logout(): Promise<void> {
+  const refresh = getRefreshToken();
+  try {
+    await api("/api/v1/auth/logout", {
+      method: "POST",
+      body: refresh ? { refresh_token: refresh } : undefined,
+    });
+  } catch {
+    // Deliberately swallowed. The caller clears local state regardless, so a failed
+    // revoke degrades to the previous behaviour rather than trapping the student in a
+    // session they have asked to end.
+  }
+}
+
 /** Log in and return the raw access token (API mode). */
 export async function login(email: string, password: string): Promise<string> {
   const data = await api<{ access_token: string; refresh_token?: string }>("/api/v1/auth/login", {

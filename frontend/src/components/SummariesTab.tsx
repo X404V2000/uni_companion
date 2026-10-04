@@ -14,6 +14,7 @@ import { Icon } from "./Icon";
 import { summarize } from "../lib/api";
 import { extractTextFromFile, UnsupportedFileError } from "../lib/fileText";
 import { describeError } from "../lib/session";
+import { ErrorState } from "./states";
 
 type ModuleRow = { id: string; code: string; name: string };
 
@@ -238,17 +239,20 @@ function SummariesTab({
         </div>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-2xl border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-4 py-3 text-[12px] leading-relaxed text-[var(--color-danger)]"
-        >
-          {error}
-        </p>
-      )}
+      {error && <ErrorState message={error} />}
 
+      {/* DELIBERATELY NOT LoadingSkeleton.
+          A skeleton means "content is arriving and it will be roughly this shape". This is
+          a wait on a generation step with no known duration, so a skeleton would promise
+          something it cannot deliver and then sit there animating past the point where the
+          student expects it to resolve. A sentence that names the wait is the honest form.
+          role="status" so it is announced once, politely, rather than interrupting. */}
       {pending && (
-        <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[12px] text-[var(--color-fg-muted)]"
+        >
           Generating your summary. This can take a few seconds.
         </p>
       )}

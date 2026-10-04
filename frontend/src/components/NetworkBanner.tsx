@@ -32,14 +32,24 @@
  * status 0 as "Cannot reach the server". So a captive-portal failure still surfaces - just
  * as an error on the action the student took, rather than as a persistent banner.
  *
- * WHY NOT netinfo, WHICH THE MOBILE APP USES
- * -----------------------------------------
- * The mobile client wires `@react-native-community/netinfo` through React Query's
- * `onlineManager`. The web client has no such wiring, and adding it here would be a second,
- * differently-shaped mechanism for the same idea - and, as established when the mobile
- * work was done, netinfo's web shim subscribes to `navigator.connection` when it exists,
- * which is not the same signal as `window` online/offline. Using the browser's own events
- * directly is the honest implementation for a browser.
+ * WHY THE WEB DIVERGES FROM MOBILE HERE — READ BEFORE "FIXING" IT
+ * -------------------------------------------------------------
+ * Mobile wires `@react-native-community/netinfo` through React Query's `onlineManager`;
+ * this does not. That is intended, not an oversight, and it should not be "corrected" by
+ * someone who sees two platforms behaving differently and assumes one is wrong.
+ *
+ *   Each platform uses its NATIVE connectivity signal. Mobile uses the OS-level netinfo via
+ *   React Query's `onlineManager`, because React Native has no `window` — `onlineManager`'s
+ *   default listener is inert there, which was proven when the mobile work was done. Web
+ *   uses the browser's own `online`/`offline` events, because it has them and they are the
+ *   platform's ground truth.
+ *
+ *   The behaviour is the same to the student; the mechanism differs because the platform does.
+ *
+ * The tempting alternative is `navigator.connection`, which exists in Chromium and looks more
+ * precise. It was rejected deliberately: it is a DIFFERENT signal from the events, so using it
+ * here would make web and mobile LOOK alike while deriving from different facts. Two
+ * platforms, one behaviour, each implemented the way its platform reports the truth.
  */
 
 import { useEffect, useState } from "react";

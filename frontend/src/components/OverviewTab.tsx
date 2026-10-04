@@ -1,3 +1,16 @@
+/**
+ * ⚠️ KNOWN DIVERGENCE — state components not yet adopted.
+ *
+ * `SummariesTab` and `PlannerTab` now render their loading / error / empty states through
+ * `components/states/*`, so a student meets one vocabulary on those screens. This file still
+ * handles them inline. That is deliberate, not an oversight: adopting a shared component into
+ * working code is a consistency change, and it was scoped to the two screens a student uses
+ * on a deadline, so that a cosmetic gain never risked two more screens at once.
+ *
+ * Recorded here because a documented divergence is a decision and an undocumented one is just
+ * an inconsistency. See `conversation/scope_thread_b_part2_delta.md` §2.5.
+ */
+
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "./Icon";
 import AddDeadlineForm from "./AddDeadlineForm";

@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "./Icon";
 import AddDeadlineForm from "./AddDeadlineForm";
+import { EmptyState, ErrorState, LoadingSkeleton } from "./states";
 import { completeTask, getTasks } from "../lib/api";
 import { describeError } from "../lib/session";
 
@@ -151,14 +152,7 @@ function PlannerTab({
         </button>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-2xl border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-4 py-3 text-[12px] text-[var(--color-danger)]"
-        >
-          {error}
-        </p>
-      )}
+      {error && <ErrorState message={error} />}
 
       {/* The shared form handles the no-modules case itself, offering
           module creation instead of a dead end. */}
@@ -177,9 +171,7 @@ function PlannerTab({
 
 
       <div className="space-y-3">
-        {loading && (
-          <p className="text-xs text-[var(--color-fg-muted)]">Loading your deadlines...</p>
-        )}
+        {loading && <LoadingSkeleton rows={4} label="Loading your deadlines" />}
 
         {!loading &&
           tasks.map((task) => (
@@ -217,10 +209,15 @@ function PlannerTab({
             </div>
           ))}
 
+        {/* No `action` here on purpose. "Add deadline" is already a permanent button in
+            this screen's header, so repeating it would be duplicate copy rather than a new
+            way out - and adding a control is outside the scope of a state-component swap.
+            The hint names the same button without restating the control. */}
         {!loading && tasks.length === 0 && (
-          <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center text-xs text-[var(--color-fg-muted)]">
-            No deadlines yet.
-          </p>
+          <EmptyState
+            title="No deadlines yet"
+            hint="Add one with the button above and it will appear here."
+          />
         )}
       </div>
     </div>

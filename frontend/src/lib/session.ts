@@ -5,7 +5,7 @@
  * owns the token in localStorage, and duplicating that logic here would create
  * two sources of truth that drift.
  */
-import { clearToken, getMe, getToken, type AccountProfile } from "./api";
+import { ApiError, clearToken, getMe, getToken, type AccountProfile } from "./api";
 
 /** Where the shell remembers that a session exists. */
 const MARKER = "vc.session";
@@ -56,6 +56,37 @@ export function forgetSession(): void {
  * something true and actionable.
  */
 export function describeError(error: unknown): string {
+  // STATUS FIRST, PROSE SECOND.
+  //
+  // The previous version only string-matched "Failed to fetch", so every HTTP failure
+  // that carried a status was flattened into whatever the backend happened to say - or
+  // into a generic sentence if it said nothing useful. `ApiError.status` was available
+  // the whole time and was not being used. Matching on prose is fragile: the string
+  // changes with the browser, the locale, and the fetch implementation.
+  if (error instanceof ApiError) {
+    if (error.status === 0) {
+      return "Cannot reach the server. Check your connection and try again.";
+    }
+    if (error.status === 401) {
+      return "Your session expired. Please sign in again.";
+    }
+    if (error.status === 429) {
+      // NEUTRAL, DELIBERATELY. This helper is shared, so a 429 raised by a rate-limited
+      // LOGIN would otherwise be told "Daily summary limit reached" - a specific and
+      // wrong claim about which limit was hit. Naming the general situation is honest;
+      // a caller that knows the context can say more.
+      return "Too many requests. Wait a moment and try again.";
+    }
+    if (error.status === 503) {
+      return "That service is temporarily unavailable. Try again in a moment.";
+    }
+    if (error.status >= 500) {
+      return "The server had a problem. Try again shortly.";
+    }
+    // A 4xx detail is written for a human, so prefer it over anything generic.
+    if (error.message.trim()) return error.message;
+  }
+
   if (error && typeof error === "object" && "message" in error) {
     const message = String((error as { message: unknown }).message);
 

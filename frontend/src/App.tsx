@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "./components/Icon";
 import AuthPage from "./components/AuthPage";
 import { getModules, logout, type AccountProfile } from "./lib/api";
+import { NetworkBanner } from "./components/NetworkBanner";
 import { forgetSession, restoreSession } from "./lib/session";
 import OverviewTab from "./components/OverviewTab";
 // PlaceholderTab is intentionally retained but no longer imported.
@@ -213,6 +214,11 @@ export default function App() {
           {toast}
         </div>
       )}
+
+      {/* Above the header, so it is the first thing read and is not scrolled away with
+          the content. Sticky is deliberately NOT used: the header already occupies that
+          position, and two stacked sticky elements would push the content down twice. */}
+      <NetworkBanner />
 
       <header className="safe-top sticky top-0 z-20 flex h-[62px] shrink-0 items-center border-b border-[var(--color-raised)] bg-[var(--color-bg)]/95 px-5 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">

@@ -35,7 +35,46 @@ const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 const TASK_TYPES = ["ASSIGNMENT", "EXAM", "TEST", "QUIZ"] as const;
 
 /** Format an ISO due date for display, tolerating a missing value. */
+/**
+ * How long until a deadline, in words a student can act on.
+ *
+ * WHY RELATIVE RATHER THAN AN ABSOLUTE TIMESTAMP
+ * "26 Sept 2026, 23:59" is precise and requires arithmetic to be useful. The question a
+ * student is actually asking is "how long have I got", and "Due tomorrow" answers it
+ * without a calculation. The exact timestamp is not lost - `formatDueExact` still
+ * provides it as the row's tooltip, so precision stays one hover away.
+ *
+ * THE TRAP THIS AVOIDS
+ * The obvious implementation is `Math.ceil((due - now) / 86_400_000)`, which is wrong:
+ * a deadline at 23:00 TODAY is less than 24 hours away, so it rounds up to "tomorrow".
+ * The comparison has to be between CALENDAR DAYS in the student's own timezone, which is
+ * what the two startOfDay calls below do. A date at 23:00 today is due today, not
+ * tomorrow because UTC rolled over.
+ */
+function startOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
 function formatDue(due: string | undefined): string {
+  if (!due) return "No date";
+  const date = new Date(due);
+  // An unparseable date must not render "NaN days overdue". The previous version
+  // tolerated this and the tolerance is kept.
+  if (Number.isNaN(date.getTime())) return "No date";
+
+  const days = Math.round(
+    (startOfLocalDay(date) - startOfLocalDay(new Date())) / 86_400_000,
+  );
+
+  if (days < -1) return `${Math.abs(days)} days overdue`;
+  if (days === -1) return "1 day overdue";
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return `Due in ${days} days`;
+}
+
+/** The exact timestamp, kept for the tooltip so relative labels lose no precision. */
+function formatDueExact(due: string | undefined): string {
   if (!due) return "No date";
   const date = new Date(due);
   if (Number.isNaN(date.getTime())) return "No date";
@@ -156,7 +195,12 @@ function PlannerTab({
                 >
                   {task.title}
                 </p>
-                <p className="mt-0.5 text-[10px] text-[var(--color-fg-subtle)]">
+                <p
+                  className="mt-0.5 text-[10px] text-[var(--color-fg-subtle)]"
+                  // The relative label is what a student reads; the exact timestamp is
+                  // one hover away, so switching to relative loses no precision.
+                  title={formatDueExact(task.due_date)}
+                >
                   {moduleList.find((m) => m.id === task.module_id)?.code ?? "—"} ·{" "}
                   {formatDue(task.due_date)}
                   {task.priority ? ` · ${task.priority}` : ""}

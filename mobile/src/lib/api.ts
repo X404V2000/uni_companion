@@ -78,6 +78,7 @@ const PRODUCTION_API_BASE = "https://uni-companion.onrender.com";
 export const API_BASE: string = resolveApiBase();
 
 const TOKEN_KEY = "vc.token";
+const REFRESH_KEY = "vc.refresh";
 
 /** Error carrying the HTTP status so callers can branch (401 vs 429 vs 503). */
 export class ApiError extends Error {
@@ -137,11 +138,134 @@ export async function setToken(token: string): Promise<void> {
 
 export async function clearToken(): Promise<void> {
   cachedToken = null;
+  cachedRefreshToken = null;
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
+    // The refresh token goes too. A "logout" that leaves a 7-day credential in the
+    // keystore is not a logout - it is a logout the app believes in but the device
+    // does not. Every clearToken() call site (401 handling, sign-out, account
+    // deletion) intends to end the session, and all of them mean this.
+    await SecureStore.deleteItemAsync(REFRESH_KEY);
   } catch {
-    // Nothing useful to do; the in-memory token is already gone.
+    // Nothing useful to do; both in-memory mirrors are already gone.
   }
+}
+
+// ---------------------------------------------------------------------------
+// Refresh token
+// ---------------------------------------------------------------------------
+//
+// WHY THE MOBILE CLIENT NOW KEEPS ONE
+// -----------------------------------
+// The backend has issued a 7-day refresh token since migration `0013`, and this client
+// typed the login response as `{ access_token }` and discarded it. So the 15-minute
+// access token was the whole session: a student was signed out after fifteen minutes,
+// four times an hour, on a phone, where retyping a password is painful and costs data.
+//
+// The web client has had this since `fix(web): keep the session alive past 15 minutes`.
+// This is the same flow - deliberately, so both clients behave identically and one proof
+// covers both - but NOT the same storage: the web uses localStorage, this uses
+// expo-secure-store, which keeps the credential in the OS keychain instead of somewhere
+// any script on the page could read.
+
+let cachedRefreshToken: string | null = null;
+
+/** Read the persisted refresh token into memory. Called with loadToken() at startup. */
+export async function loadRefreshToken(): Promise<string | null> {
+  try {
+    cachedRefreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+  } catch {
+    // A corrupt keystore must not crash the app. Losing the refresh token means the
+    // student signs in again when the access token expires, which is the old
+    // behaviour rather than a new failure.
+    cachedRefreshToken = null;
+  }
+  return cachedRefreshToken;
+}
+
+export async function setRefreshToken(token: string): Promise<void> {
+  cachedRefreshToken = token;
+  try {
+    await SecureStore.setItemAsync(REFRESH_KEY, token);
+  } catch {
+    // In-memory only for this process; the durable copy failed. Not fatal - the
+    // access token still works until it expires.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Single-flight refresh
+// ---------------------------------------------------------------------------
+//
+// THE STAMPEDE, AND WHY THIS IS NOT AN OPTIMISATION
+// -------------------------------------------------
+// The dashboard fires several requests on mount. When the access token expires they all
+// receive 401 at once. A naive implementation starts one refresh per 401, and with
+// ROTATION ENABLED on the backend the first consumes the refresh token while the others
+// present one that has already been used - which the server correctly treats as theft,
+// revoking the whole chain. The student is signed out precisely because they were active.
+//
+// So the lock is what stops the app's own concurrency from triggering reuse detection.
+//
+// `finally` matters: if doRefresh throws, the promise must still be cleared, or every
+// later 401 awaits a settled-and-gone promise forever and the session can never recover.
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Paths that must never trigger the interceptor, or it recurses on itself. */
+const AUTH_PATHS = new Set([
+  "/api/v1/auth/login",
+  "/api/v1/auth/signup",
+  "/api/v1/auth/refresh",
+]);
+
+async function doRefresh(): Promise<boolean> {
+  const refresh = cachedRefreshToken ?? (await loadRefreshToken());
+  if (!refresh) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+
+    // Parse defensively rather than inside the same try/catch as the fetch.
+    //
+    // WHY THIS IS SEPARATE: a JSON parse failure and a network failure both landed in
+    // the catch below, so a malformed response from the server was indistinguishable
+    // from being offline. They need different outcomes - a bad response means the
+    // refresh is unusable, an unreachable server means the student should stay signed
+    // in and try again. Conflating them is what made this hard to diagnose.
+    let data: { access_token?: string; refresh_token?: string };
+    try {
+      data = (await res.json()) as { access_token?: string; refresh_token?: string };
+    } catch {
+      return false;
+    }
+    if (!data.access_token || !data.refresh_token) return false;
+    // Store BOTH. The refresh token is single-use, so keeping the old one would make the
+    // very next refresh look like a replay.
+    await setToken(data.access_token);
+    await setRefreshToken(data.refresh_token);
+    return true;
+  } catch {
+    // A network failure is NOT a rejected session. Return false so the caller stops, but
+    // do not clear the tokens - the student may simply be offline and should stay signed
+    // in. Clearing here is how an app logs people out on a dropped connection.
+    return false;
+  }
+}
+
+/** Refresh at most once concurrently, and let every caller await the same result. */
+export function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
 }
 
 type ApiOptions = {
@@ -194,12 +318,57 @@ export async function api<T = unknown>(
     throw new ApiError("Network error", 0, null);
   }
 
-  // Any 401 outside login means the stored token is missing/expired: clear it
-  // so the app reverts to the login screen instead of looping on failures.
-  if (res.status === 401 && path !== "/api/v1/auth/login") {
-    // Deliberately not awaited: clearing the keystore must not delay surfacing
-    // the error to the caller, and the in-memory mirror is cleared synchronously.
-    void clearToken();
+  // A 401 on a normal request means the ACCESS token expired. Try exactly one refresh,
+  // then replay this request once.
+  //
+  // WHY ONCE, WITH NO BUDGET OR QUEUE
+  // A retry loop can hammer the backend during an outage, and a queue needs a policy
+  // nobody has specified. One replay covers the real case - a token that expired while the
+  // student was using the app - and anything more is a loop.
+  //
+  // The auth paths are exempt: a 401 from /auth/refresh means "no session", not "refresh
+  // and retry", and retrying there would recurse until the stack runs out.
+  if (res.status === 401 && !AUTH_PATHS.has(path)) {
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      // Replay with the SAME method, headers and body. A replayed POST that loses its
+      // body is a silent data-loss bug - the "appears to save but did not" class.
+      const retryHeaders: Record<string, string> = { ...finalHeaders };
+      // READ THROUGH, WITH THE SAME FALLBACK doRefresh USES.
+      //
+      // getToken() returns the in-memory mirror, which is populated at startup. But
+      // doRefresh reads `cachedRefreshToken ?? await loadRefreshToken()` - it has a
+      // fallback for an empty mirror, and this did not. So in any state where the mirror
+      // was empty, the refresh would succeed and the replay would carry NO auth header,
+      // 401 again, and sign the student out. The asymmetry was the bug: if a fallback is
+      // needed on one side of the refresh, it is needed on the other.
+      //
+      // Re-reading from the keystore is cheap and only happens on the replay path.
+      const fresh = getToken() ?? (await loadToken());
+      if (fresh) retryHeaders["Authorization"] = `Bearer ${fresh}`;
+      try {
+        res = await fetch(API_BASE + path, {
+          method,
+          headers: retryHeaders,
+          body:
+            body !== undefined
+              ? JSON.stringify(body)
+              : rawBody !== undefined
+                ? rawBody
+                : undefined,
+        });
+      } catch {
+        throw new ApiError("Network error", 0, null);
+      }
+    }
+    // Still 401 after a successful refresh, or the refresh failed: the session is
+    // genuinely over. Clearing here is correct - unlike a network failure, the server has
+    // told us the credential is no good.
+    if (res.status === 401) {
+      // Deliberately not awaited: clearing the keystore must not delay surfacing the
+      // error, and the in-memory mirrors are cleared synchronously.
+      void clearToken();
+    }
   }
 
   const text = await res.text();
@@ -257,12 +426,15 @@ export type DashboardData = {
 
 /** Log in and return the raw access token (API mode). */
 export async function login(email: string, password: string): Promise<string> {
-  const data = await api<{ access_token: string }>("/api/v1/auth/login", {
-    method: "POST",
-    auth: false,
-    headers: { "x-auth-mode": "api" },
-    body: { email, password },
-  });
+  const data = await api<{ access_token: string; refresh_token?: string }>(
+    "/api/v1/auth/login",
+    {
+      method: "POST",
+      auth: false,
+      headers: { "x-auth-mode": "api" },
+      body: { email, password },
+    },
+  );
   // Persist here, not only at the call site. Returning the token without
   // storing it meant a caller that forgot setToken() produced a logged-in
   // looking screen where every request was unauthenticated - the token was
@@ -271,6 +443,15 @@ export async function login(email: string, password: string): Promise<string> {
   // discarded after a successful login, every later request was unauthenticated,
   // and every list rendered its empty state - which looked like a broken backend.
   await setToken(data.access_token);
+
+  // Keep the long-lived half of the session. Until this line existed the 15-minute
+  // access token WAS the whole session, so a student was signed out four times an hour.
+  //
+  // Optional in the type on purpose: the backend only issues a refresh token in API
+  // mode, and a response without one must not crash the client - it must simply behave
+  // as it did before, signing in and expiring.
+  if (data.refresh_token) await setRefreshToken(data.refresh_token);
+
   return data.access_token;
 }
 

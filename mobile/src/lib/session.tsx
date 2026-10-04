@@ -35,7 +35,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { ApiError, clearToken, getMe, loadToken } from "./api";
+import { ApiError, clearToken, getMe, loadRefreshToken, loadToken } from "./api";
 
 export type SessionStatus = "checking" | "signed-in" | "signed-out";
 
@@ -98,7 +98,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     void (async () => {
+      // Load BOTH halves of the session. If only the access token were restored, a
+      // cold start would hold a credential it cannot renew and the student would be
+      // signed out at the next expiry - which is exactly the bug being fixed, just
+      // deferred by one launch.
       const token = await loadToken();
+      await loadRefreshToken();
       if (cancelled) return;
 
       if (!token) {

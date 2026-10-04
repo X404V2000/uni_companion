@@ -628,6 +628,7 @@ export async function askBrief(
 /**
  * Search study materials for a module. `moduleCode` is REQUIRED by the backend.
  * `q` is an optional free-text filter. `resourceType` narrows to one type.
+ * `moduleName` is the student's own module title, used only as a small relevance nudge.
  */
 export async function searchMaterials(params: {
   moduleCode: string;
@@ -635,11 +636,28 @@ export async function searchMaterials(params: {
   resourceType?: string;
   page?: number;
   size?: number;
+  moduleName?: string;
+  includeYoutube?: boolean;
 }): Promise<MaterialPage> {
   const qs = new URLSearchParams();
   qs.set("module_code", params.moduleCode);
   if (params.q?.trim()) qs.set("q", params.q.trim());
   if (params.resourceType) qs.set("resource_type", params.resourceType);
+
+  // Sent only when present. The backend treats it as optional, and an empty string
+  // would be a meaningless value to pass - so an absent name sends no parameter at all
+  // rather than `module_name=`.
+  if (params.moduleName?.trim()) qs.set("module_name", params.moduleName.trim());
+
+  // Sent ONLY when true.
+  //
+  // WHY NOT `qs.set("include_youtube", String(params.includeYoutube ?? false))`:
+  // that always emits the parameter, so every request would carry a key the previous
+  // client never sent. Sending it only when it changes the answer keeps the default
+  // request byte-identical to before the parameter existed, which is what makes the
+  // backend change non-breaking in practice rather than only on paper.
+  if (params.includeYoutube) qs.set("include_youtube", "true");
+
   qs.set("page", String(params.page ?? 1));
   qs.set("size", String(params.size ?? 20));
   return api<MaterialPage>(`/api/v1/materials/search?${qs.toString()}`);

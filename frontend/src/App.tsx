@@ -4,7 +4,13 @@ import AuthPage from "./components/AuthPage";
 import { getModules, type AccountProfile } from "./lib/api";
 import { forgetSession, restoreSession } from "./lib/session";
 import OverviewTab from "./components/OverviewTab";
-import PlaceholderTab from "./components/PlaceholderTab";
+// PlaceholderTab is intentionally retained but no longer imported.
+//
+// It was only ever used by the Saved Library tab (C5 removed it), so this import would
+// now be dead. The component itself is kept because it is a generic "not built yet"
+// screen that the next unbuilt tab can reuse without rewriting - deleting it would make
+// that a fresh task for no benefit. If it is still unused after the next feature lands,
+// it is safe to remove along with its file.
 import SummariesTab from "./components/SummariesTab";
 import PlannerTab from "./components/PlannerTab";
 import MaterialsTab from "./components/MaterialsTab";
@@ -13,7 +19,13 @@ const tabs: { label: string; icon: IconName; short: string }[] = [
   { label: "Overview", icon: "home", short: "Home" },
   { label: "AI Summaries", icon: "sparkles", short: "AI" },
   { label: "Find Materials", icon: "search", short: "Find" },
-  { label: "Saved Library", icon: "bookmark", short: "Saved" },
+  // "Saved Library" was here. It was a placeholder with no backing feature, so it
+  // occupied a fifth of the navigation to reach a screen that could not do anything.
+  // Removed rather than hidden: a tab that exists but does nothing is worse than no
+  // tab, because it teaches a student that the app has a feature it does not have.
+  //
+  // When saving is built, restore it here and add a matching render block below. The
+  // `bookmark` icon is deliberately left in Icon.tsx so that needs no new artwork.
   { label: "Study Planner", icon: "calendar", short: "Planner" },
 ];
 
@@ -267,9 +279,6 @@ export default function App() {
                 moduleList={moduleList}
                 onModulesChanged={reloadModules}
               />
-            )}
-            {activeTab === "Saved Library" && (
-              <PlaceholderTab label="Saved Library" icon="bookmark" notify={notify} />
             )}
         </div>
       </main>

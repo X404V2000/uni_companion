@@ -25,7 +25,13 @@ const TYPE_ICON: Record<string, "play" | "book" | "document" | "search"> = {
   ARTICLE: "document",
 };
 
-const TYPES = ["", "YOUTUBE", "JOURNAL", "PDF", "ARTICLE"] as const;
+// The filter chips. YouTube is deliberately absent: videos are excluded by default at
+// the API, so offering a chip that can only ever return nothing would be a dead control.
+//
+// The YOUTUBE entry in TYPE_ICON below is deliberately KEPT. Only this list changed, so
+// flipping the backend default back on later needs no frontend edit - and any video row
+// that does arrive still renders with its own icon rather than a fallback.
+const TYPES = ["", "JOURNAL", "PDF", "ARTICLE"] as const;
 
 function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; moduleList: ModuleRow[] }) {
   const [moduleCode, setModuleCode] = useState("");
@@ -61,6 +67,10 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
         q: opts?.q ?? query,
         resourceType: resourceType || undefined,
         size: 20,
+        // The student's own module title, used by the backend only as a small
+        // relevance nudge - never as a filter. Resolved from the selected module so it
+        // stays correct when the dropdown changes.
+        moduleName: moduleList.find((m) => m.code === code)?.name,
       });
       setPage(result);
       setSearched(true);
@@ -150,7 +160,8 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
 
       {moduleList.length === 0 ? (
         <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center text-xs text-[var(--color-fg-muted)]">
-          Add a module first, then its resources appear here.
+          Add a module first — materials are organised per module, so there is
+          nothing to search until you have one.
         </p>
       ) : (
         <>
@@ -267,31 +278,66 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
             ))}
           </div>
 
+          {/* THREE EMPTY STATES, because "nothing here" has three different causes and
+              only one of them is the student's fault.
+
+              An earlier version showed two, and both said "Nothing matched that search"
+              - which was wrong for the case where no search had been made. A student
+              browsing a module with an empty catalog was told their search failed, when
+              they had not searched; the honest message is that the module has nothing
+              yet and that fetching is what fills it. */}
           {searched && !loading && items.length === 0 && (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
-              <p className="text-xs text-[var(--color-fg-muted)]">Nothing matched that search.</p>
-              {query ? (
-                <button
-                  onClick={() => {
-                    setQuery("");
-                    void run({ q: "" });
-                  }}
-                  className="mt-3 text-[11px] font-bold text-[var(--color-success)] underline"
-                >
-                  Show everything for this module
-                </button>
+              {query.trim() ? (
+                /* (1) A SEARCH WAS MADE AND MISSED. The student's own query is the
+                   likely cause, so offer the way back to the full module list. */
+                <>
+                  <p className="text-xs text-[var(--color-fg-muted)]">
+                    No materials match “{query.trim()}” in this module.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setQuery("");
+                      void run({ q: "" });
+                    }}
+                    className="mt-3 text-[11px] font-bold text-[var(--color-success)] underline"
+                  >
+                    Show everything for this module
+                  </button>
+                </>
+              ) : resourceType ? (
+                /* (2) A TYPE FILTER IS ACTIVE. Easy to forget it is on, and the fix is
+                   one tap rather than a re-fetch, so name the filter explicitly. */
+                <>
+                  <p className="text-xs text-[var(--color-fg-muted)]">
+                    No {resourceType.toLowerCase()} resources in this module yet.
+                  </p>
+                  <button
+                    onClick={() => setResourceType("")}
+                    className="mt-3 text-[11px] font-bold text-[var(--color-success)] underline"
+                  >
+                    Show all types
+                  </button>
+                </>
               ) : (
-                /* An empty module with no query means the CATALOG has nothing for
-                   it yet, which is a different situation from "your search missed".
-                   Before this, both showed the same dead end, so a student had no
-                   way to discover that fetching is what fills the list. */
-                <button
-                  onClick={() => void fetchResources()}
-                  disabled={fetching}
-                  className="mt-3 text-[11px] font-bold text-[var(--color-teal)] underline disabled:opacity-50"
-                >
-                  {fetching ? "Finding resources…" : "Find resources for this module"}
-                </button>
+                /* (3) THE CATALOG IS EMPTY. Nothing is wrong with the student's input;
+                   the module simply has no resources stored yet, and fetching is the
+                   action that changes that. This is also where a student who has never
+                   fetched anything discovers that fetching exists. */
+                <>
+                  <p className="text-xs text-[var(--color-fg-muted)]">
+                    No materials for this module yet.
+                  </p>
+                  <button
+                    onClick={() => void fetchResources()}
+                    disabled={fetching}
+                    className="mt-3 text-[11px] font-bold text-[var(--color-teal)] underline disabled:opacity-50"
+                  >
+                    {fetching
+                      ? "Finding resources…"
+                      : "Find resources for this module"}
+                  </button>
+                </>
               )}
             </div>
           )}

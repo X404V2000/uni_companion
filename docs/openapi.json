@@ -4555,7 +4555,7 @@
     },
     "/api/v1/materials/search": {
       "get": {
-        "description": "Search curated, low-data study materials scoped to a module.\n\nRanked by default: an exact title match outranks a title prefix, which\noutranks a title substring, which outranks a description match. The rule is\ndeterministic and documented in `material_service._score_material`.",
+        "description": "Search curated, low-data study materials scoped to a module.\n\nRanked by default: an exact title match outranks a title prefix, which\noutranks a title substring, which outranks a description match. The rule is\ndeterministic and documented in `material_service._score_material`.\n\nYouTube results are excluded unless `include_youtube=true`. Combining\n`include_youtube=false` with `resource_type=YOUTUBE` returns an empty page: the\ntwo parameters are independent, and a flag whose meaning depended on another\nparameter would be unmaintainable.",
         "operationId": "search_materials_api_v1_materials_search_get",
         "parameters": [
           {
@@ -4644,6 +4644,33 @@
               "minimum": 1,
               "title": "Size",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_youtube",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Youtube",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "module_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Module Name"
             }
           }
         ],

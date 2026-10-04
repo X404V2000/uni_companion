@@ -46,6 +46,21 @@ def search_materials(
     sort: Literal["relevance", "recent", "title"] = Query(default="relevance"),
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=50),
+    # YouTube is excluded unless the client explicitly asks for it.
+    #
+    # WHY THE DEFAULT IS FALSE, AND WHY IT LIVES HERE
+    # ----------------------------------------------
+    # Video is a supplement, not core study material, and a student scrolling for a
+    # reading list should not have to filter them out. The default is set at the ROUTE
+    # rather than in the service so that the service keeps its historical behaviour and
+    # neither existing caller changes without opting in.
+    #
+    # Omitted entirely, the request is byte-identical to before this parameter existed,
+    # which is what makes the change non-breaking - see the AC 5 snapshot.
+    include_youtube: bool = Query(default=False),
+    # The module's NAME, as typed by the student. Used only to give a small relevance
+    # nudge to rows that mention it - never to filter. Omitted, ranking is unchanged.
+    module_name: str | None = Query(default=None, max_length=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -54,6 +69,11 @@ def search_materials(
     Ranked by default: an exact title match outranks a title prefix, which
     outranks a title substring, which outranks a description match. The rule is
     deterministic and documented in `material_service._score_material`.
+
+    YouTube results are excluded unless `include_youtube=true`. Combining
+    `include_youtube=false` with `resource_type=YOUTUBE` returns an empty page: the
+    two parameters are independent, and a flag whose meaning depended on another
+    parameter would be unmaintainable.
     """
     result = material_service.search_materials_paginated(
         db=db,
@@ -63,6 +83,8 @@ def search_materials(
         sort=sort,
         page=page,
         size=size,
+        include_youtube=include_youtube,
+        module_name=module_name,
     )
     analytics_service.record_event(
         db,

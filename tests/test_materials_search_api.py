@@ -67,8 +67,12 @@ class TestModuleScoping:
         code_b = f"COS{marker[:6]}"
         title = f"Unique {marker} tutorial"
 
-        _seed_material(db, code_a, title)
-        _seed_material(db, code_b, "Other module material")
+        # resource_type is explicit, and that matters: `_seed_material` defaults to
+        # YOUTUBE, which the search route now excludes unless asked. Leaving it implicit
+        # made this module-scoping test fail for an unrelated reason - a good reminder
+        # that a helper default is part of the test's meaning.
+        _seed_material(db, code_a, title, resource_type="ARTICLE")
+        _seed_material(db, code_b, "Other module material", resource_type="ARTICLE")
 
         token = _signup_and_token(client)
         resp = client.get(
@@ -128,7 +132,16 @@ class TestLowDataFlag:
         token = _signup_and_token(client)
         resp = client.get(
             "/api/v1/materials/search",
-            params={"module_code": code, "resource_type": "YOUTUBE"},
+            # include_youtube is REQUIRED here now. The route excludes videos by
+            # default, so `resource_type=YOUTUBE` alone returns empty by design
+            # (architect D2) - the two parameters are independent rather than one
+            # overriding the other. This test is about the low-data flag on videos,
+            # so it opts in explicitly.
+            params={
+                "module_code": code,
+                "resource_type": "YOUTUBE",
+                "include_youtube": "true",
+            },
             headers=_auth(client, token),
         )
         assert resp.status_code == 200, resp.text

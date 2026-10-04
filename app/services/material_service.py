@@ -52,6 +52,21 @@ _SCORE_DESCRIPTION_CONTAINS = 40
 _SCORE_RESOURCE_TYPE = 20
 _SCORE_NONE = 0
 
+# Relevance added to a row whose text mentions the module's NAME.
+#
+# WHY 15, AND WHY IT MUST STAY BELOW 20
+# -------------------------------------
+# The lowest genuine match tier is _SCORE_RESOURCE_TYPE = 20. A boost of 15 means a row
+# boosted by a module-name hit reaches at most 15, so it can never reach 20 - it cannot
+# create a result where there was no textual match, because unmatched rows are dropped
+# before any boost applies. And a boosted description match reaches 55, which still
+# cannot outrank a title match at 60.
+#
+# So the boost breaks no ties and promotes nothing; it only separates rows that already
+# matched. RAISING THIS TO 20 OR ABOVE WOULD BREAK THAT, which is why the arithmetic is
+# written down here rather than left as a bare number for someone to "tidy".
+_RANK_BOOST_MODULE_NAME = 15
+
 
 def _score_material(material: StudyMaterial, q_lower: str) -> int:
     """Deterministic relevance of one material to an already-lowercased query.
@@ -91,6 +106,9 @@ def search_materials_paginated(
     sort: str = "relevance",
     page: int = 1,
     size: int = 20,
+    *,
+    include_youtube: bool = True,
+    module_name: str | None = None,
 ) -> dict:
     """Return paginated, module-scoped, approved study materials, ranked.
 
@@ -117,6 +135,19 @@ def search_materials_paginated(
     if resource_type:
         query = query.filter(StudyMaterial.resource_type == resource_type)
 
+    # YouTube is excluded by DEFAULT at the router, but that default lives in the
+    # ROUTE, not here: this service keeps its historical behaviour so the two existing
+    # callers are unaffected unless they opt in. A service that silently dropped rows
+    # its own docstring did not mention would be the kind of hidden behaviour that
+    # costs a day to find later.
+    #
+    # NOTE ON THE COMBINATION `include_youtube=False` + `resource_type="YOUTUBE"`:
+    # it returns EMPTY, and that is deliberate rather than an oversight. A flag whose
+    # meaning changed depending on another parameter would be unmaintainable; the
+    # honest answer to "give me a type I have excluded" is nothing, not a special case.
+    if not include_youtube:
+        query = query.filter(StudyMaterial.resource_type != "YOUTUBE")
+
     # Module-scoped, so bounded by one module's corpus rather than the table.
     candidates = query.all()
 
@@ -133,6 +164,33 @@ def search_materials_paginated(
                 scored.append((material, score))
     else:
         scored = [(material, 0) for material in candidates]
+
+    # Module-name boost. APPLIED AFTER the filter above, never before.
+    #
+    # ORDERING IS THE WHOLE SAFETY PROPERTY. The filter has already dropped every row
+    # scoring _SCORE_NONE, so a row that matched nothing textually is no longer in
+    # `scored` and cannot be boosted into existence. Applying the boost first would let
+    # a module-name mention promote a row with no relevance to the query at all - a
+    # search for "recursion" would return every row whose title contained the module
+    # name. The `base > 0` guard and this position are the same guarantee stated twice;
+    # either alone is sufficient, and both are cheap.
+    #
+    # Only when a query was supplied. A browse (empty q) scores everything 0 by design,
+    # and boosting there would reorder a plain listing by module name for no reason.
+    if module_name and q_lower:
+        needle = module_name.strip().lower()
+        if needle:
+            boosted: list[tuple[StudyMaterial, int]] = []
+            for material, base in scored:
+                if base <= _SCORE_NONE:
+                    continue  # unreachable given the filter, asserted for clarity
+                hit = needle in (material.title or "").lower() or needle in (
+                    material.description or ""
+                ).lower()
+                boosted.append(
+                    (material, base + (_RANK_BOOST_MODULE_NAME if hit else 0))
+                )
+            scored = boosted
 
     # Sort. NOTE: `reverse=True` on a mixed tuple would reverse EVERY component,
     # including the id tiebreaker, silently turning "id ASC" into "id DESC" and

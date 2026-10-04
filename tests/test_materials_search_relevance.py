@@ -315,12 +315,64 @@ class TestAlternativeSorts:
 
 class TestBackwardCompatibility:
     def test_existing_resource_type_filter_still_works(self, client, db, clean):
+        """The resource_type filter itself is unchanged - for the non-YouTube types.
+
+        This test previously asserted `resource_type=YOUTUBE` returned the video, and it
+        passed on main. It no longer does, because `include_youtube` now defaults to
+        false at the route (architect D2, scope §4.3) and the two parameters are
+        independent: a flag whose meaning changed with another parameter would be
+        unmaintainable, so "give me a type I have excluded" honestly returns nothing.
+
+        The filter is therefore retargeted at JOURNAL, where it is still unconditional,
+        and the YouTube behaviour is pinned by its own explicit pair below. Deleting
+        this test would have removed the guarantee rather than restating it.
+        """
         _, token = _user_and_token(db, client)
         _seed(db, "Loops video", resource_type="YOUTUBE")
         _seed(db, "Loops paper", resource_type="JOURNAL")
 
+        body = _search(client, token, module_code=CODE, resource_type="JOURNAL")
+        assert [i["title"] for i in body["items"]] == ["Loops paper"]
+
+    def test_youtube_is_excluded_by_default(self, client, db, clean):
+        """C1: omitting include_youtube excludes videos, without being asked not to.
+
+        `resource_type` is deliberately omitted here, so this exercises the DEFAULT
+        rather than the combination - the common case for a student browsing a module.
+        """
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops video", resource_type="YOUTUBE")
+        _seed(db, "Loops paper", resource_type="JOURNAL")
+
+        body = _search(client, token, module_code=CODE)
+        titles = [i["title"] for i in body["items"]]
+        assert "Loops video" not in titles, "videos must not appear unless requested"
+        assert "Loops paper" in titles, "excluding videos must not exclude anything else"
+
+    def test_include_youtube_true_restores_videos(self, client, db, clean):
+        """The opt-in half. Without this, the exclusion could pass by breaking videos."""
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops video", resource_type="YOUTUBE")
+        _seed(db, "Loops paper", resource_type="JOURNAL")
+
+        body = _search(client, token, module_code=CODE, include_youtube="true")
+        titles = [i["title"] for i in body["items"]]
+        assert "Loops video" in titles, "include_youtube=true must return videos"
+        assert "Loops paper" in titles
+
+    def test_excluded_type_requested_explicitly_returns_empty(self, client, db, clean):
+        """D2, pinned.
+
+        `include_youtube=false` + `resource_type=YOUTUBE` is empty, and that is intended
+        rather than an oversight. Asserted explicitly so nobody later "fixes" it into a
+        special case - the reasoning is that the two parameters stay independent.
+        """
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops video", resource_type="YOUTUBE")
+
         body = _search(client, token, module_code=CODE, resource_type="YOUTUBE")
-        assert [i["title"] for i in body["items"]] == ["Loops video"]
+        assert body["items"] == [], "an excluded type must return nothing, not a fallback"
+        assert body["total"] == 0
 
     def test_unapproved_rows_never_returned(self, client, db, clean):
         _, token = _user_and_token(db, client)
@@ -362,5 +414,117 @@ class TestBackwardCompatibility:
 
         body = _search(client, token, module_code=CODE)
         assert body["items"], "expected rows"
+        for item in body["items"]:
+            assert isinstance(item["relevance_score"], int)
+
+
+# ---------------------------------------------------------------------------
+# 6. Module-name boost (C2)
+# ---------------------------------------------------------------------------
+
+class TestModuleNameBoost:
+    """`module_name` gives a small nudge to rows that mention it. It must not do more.
+
+    THE BOOST IS CAPPED BELOW THE LOWEST TIER (15 < 20). Two properties follow, and
+    both are asserted here:
+
+      1. It cannot CREATE a result. Rows that matched nothing textually are dropped
+         before the boost is applied, so a module-name mention cannot promote a row
+         that is irrelevant to the query.
+      2. It cannot INVERT the tiers. A boosted description match reaches 55 and still
+         loses to a title match at 60.
+
+    Raising the constant to 20 or above breaks (1). Applying it before the filter
+    breaks (1) as well. Those are the two falsifications worth keeping.
+    """
+
+    def test_it_breaks_a_tie_between_equal_scores(self, client, db, clean):
+        """The intended effect: equal base scores, separated by the module name."""
+        _, token = _user_and_token(db, client)
+        # Both score _SCORE_TITLE_CONTAINS (60) for "loops".
+        _seed(db, "Loops in Python", description="no description")
+        _seed(db, "Loops explained", description="no description")
+
+        without = _search(client, token, module_code=CODE, q="loops")
+        assert {i["title"] for i in without["items"]} == {
+            "Loops in Python",
+            "Loops explained",
+        }
+
+        # "Loops explained" now mentions the module name, so it should lead.
+        with_boost = _search(
+            client, token, module_code=CODE, q="loops", module_name="Loops"
+        )
+        assert with_boost["items"][0]["title"] == "Loops explained"
+
+    def test_it_never_promotes_a_non_match(self, client, db, clean):
+        """THE SAFETY PROPERTY. A row with no textual match must not appear.
+
+        The module name is placed on a row that does NOT match the query. If the boost
+        could promote it, this search for "recursion" would return "Loops explained".
+        """
+        _, token = _user_and_token(db, client)
+        _seed(db, "Recursion basics", description="no description")
+        _seed(db, "Loops explained", description="no description")   # no "recursion"
+
+        body = _search(
+            client, token, module_code=CODE, q="recursion", module_name="Loops"
+        )
+        titles = [i["title"] for i in body["items"]]
+        assert titles == ["Recursion basics"], (
+            "a module-name mention must never promote a row that does not match the "
+            f"query; got {titles}"
+        )
+
+    def test_it_does_not_invert_the_tiers(self, client, db, clean):
+        """A boosted low tier must still lose to a higher tier.
+
+        Title-contains is 60; description-contains is 40 and boosted becomes 55. 55 < 60,
+        so the order must be unchanged. This is the assertion that fails first if anyone
+        raises the constant to 20 or above.
+        """
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops overview", description="no description")          # 60
+        _seed(db, "Sorting notes", description="about loops")              # 40 + 15
+
+        body = _search(
+            client, token, module_code=CODE, q="loops", module_name="Sorting notes"
+        )
+        assert body["items"][0]["title"] == "Loops overview"
+        # And the boost did apply - otherwise the test would pass vacuously.
+        boosted = next(i for i in body["items"] if i["title"] == "Sorting notes")
+        assert boosted["relevance_score"] == 55
+
+    def test_omitting_module_name_changes_nothing(self, client, db, clean):
+        """Additive: absent, ranking is exactly as before the parameter existed."""
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops in Python", description="no description")
+        _seed(db, "Loops explained", description="no description")
+
+        a = _search(client, token, module_code=CODE, q="loops")
+        b = _search(client, token, module_code=CODE, q="loops", module_name=None)
+        assert [i["id"] for i in a["items"]] == [i["id"] for i in b["items"]]
+
+    def test_it_does_not_reorder_a_browse(self, client, db, clean):
+        """With no query everything scores 0, and boosting there would be meaningless.
+
+        A browse must stay in relevance/updated_at order regardless of module_name.
+        """
+        _, token = _user_and_token(db, client)
+        _seed(db, "Alpha", description="no description")
+        _seed(db, "Beta", description="no description")
+
+        a = _search(client, token, module_code=CODE)
+        b = _search(client, token, module_code=CODE, module_name="Alpha")
+        assert [i["id"] for i in a["items"]] == [i["id"] for i in b["items"]]
+
+    def test_scores_stay_whole_numbers(self, client, db, clean):
+        """The response contract is an int. A float would break clients parsing it."""
+        _, token = _user_and_token(db, client)
+        _seed(db, "Loops explained", description="no description")
+
+        body = _search(
+            client, token, module_code=CODE, q="loops", module_name="Loops"
+        )
         for item in body["items"]:
             assert isinstance(item["relevance_score"], int)

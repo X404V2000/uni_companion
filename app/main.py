@@ -444,7 +444,16 @@ if settings.environment != "production":
         # error even though the backend is healthy. Scoped to the workers.dev
         # and pages.dev domains rather than opened to "*", so an arbitrary site
         # still cannot call the API with credentials.
-        r"|[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev"
+        # ONE OR TWO subdomain levels. The original pattern required exactly two labels
+        # before workers.dev, which matched <worker>.<account>.workers.dev. Claiming a
+        # custom workers.dev subdomain changes the shape to
+        # <worker>.<account-subdomain>.workers.dev - the same host with an extra label -
+        # and the old pattern then rejected it, so every request failed preflight with a
+        # 400 and the app reported "Cannot reach the server" while the backend was healthy.
+        #
+        # Matched as (?:[a-z0-9-]+\.){1,2} so both shapes work: renaming the subdomain is
+        # a product decision that should not require a CORS change to survive.
+        r"|(?:[a-z0-9-]+\.){1,2}workers\.dev"
         r"|[a-z0-9-]+\.pages\.dev"
         r"|localhost(:\d+)?"
         r"|127\.0\.0\.1(:\d+)?"

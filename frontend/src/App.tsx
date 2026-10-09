@@ -228,8 +228,8 @@ export default function App() {
             <span />
           </div>
           <div>
-            <p className="font-display text-[15px] font-extrabold leading-none tracking-[-0.03em]">Varsity</p>
-            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">Companion</p>
+            <p className="font-display text-[15px] font-extrabold leading-none tracking-[-0.03em]">Scrapy</p>
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">Mog</p>
           </div>
         </div>
 

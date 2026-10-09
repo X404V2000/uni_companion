@@ -61,10 +61,10 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <div>
             <p className="font-display text-[17px] font-extrabold leading-none tracking-[-0.03em]">
-              Varsity
+              Scrapy
             </p>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-teal)]">
-              Companion
+              Mog
             </p>
           </div>
         </div>

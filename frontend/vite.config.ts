@@ -42,8 +42,8 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['icons/*.png', 'offline.html'],
         manifest: {
-          name: 'Varsity Companion',
-          short_name: 'Varsity',
+          name: 'ScrapyMog',
+          short_name: 'ScrapyMog',
           description:
             'Course-aware AI study companion for South African university students.',
           // Matches --color-bg in index.css: the splash screen and the app must

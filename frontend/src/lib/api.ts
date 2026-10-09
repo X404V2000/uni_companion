@@ -1,5 +1,5 @@
 /**
- * src/lib/api.ts — Varsity Companion API helper (hackathon wiring).
+ * src/lib/api.ts — ScrapyMog API helper (hackathon wiring).
  *
  * WHY THIS FILE EXISTS
  * --------------------

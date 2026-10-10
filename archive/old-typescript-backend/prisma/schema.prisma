@@ -1,0 +1,322 @@
+// ====================================================================
+// PRISMA DATABASE SCHEMA - VARSITY COMPANION PLATFORM
+// Supporting South African Universities (Wits, UCT, UP, UJ, Stellenbosch)
+// Modules: Core Academic Engine, Deadlines, Timetable, Low-Data Cache & SM-2
+// ====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------------------
+// 1. USER & AUTHENTICATION
+// --------------------------------------------------------------------
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique @db.VarChar(255)
+  hashedPassword   String    @map("hashed_password") @db.VarChar(255)
+  fullName         String?   @map("full_name") @db.VarChar(255)
+  university       String?   @db.VarChar(120) // Nullable in database
+  fieldOfStudy     String?   @map("field_of_study") @db.VarChar(150)
+  yearOfStudy      Int?      @map("year_of_study") @db.SmallInt
+  role             String?   @default("student") @db.VarChar(50)
+  studentNumber    String?   @map("student_number") @db.VarChar(50)
+  isActive         Boolean   @default(true) @map("is_active")
+  isVerified       Boolean   @default(false) @map("is_verified")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  courses          Course[]
+  deadlines        AcademicDeadline[]
+  timetableSlots   TimetableSlot[]
+  assignmentBriefs AssignmentBrief[]
+  flashcardDecks   FlashcardDeck[]
+  flashcards       Flashcard[]
+  aiSummaries      AISummary[]
+  studyPacks       PeerStudyPack[]
+  analyticsEvents  AnalyticsEvent[]
+
+  @@map("users")
+}
+
+// --------------------------------------------------------------------
+// 2. COURSES / ACADEMIC MODULES
+// --------------------------------------------------------------------
+model Course {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String?   @map("user_id") @db.Uuid
+  code                String?   @db.VarChar(20) // e.g., "COS 212", "INF 214", "MTH 218"
+  name                String?   @db.VarChar(255) // e.g., "Data Structures and Algorithms"
+  department          String?   @db.VarChar(100) // e.g., "Computer Science"
+  faculty             String?   @db.VarChar(100) // e.g., "Faculty of Science"
+  colorCode           String?   @default("#3b5b8c") @map("color_code") @db.VarChar(7) // Hex accent
+  dpSubminimum        Float?    @default(40.0) @map("dp_subminimum") @db.DoublePrecision // Required coursework % for exam entrance
+  syllabusDescription String?   @map("syllabus_description") @db.Text
+  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Foreign key relation with user tenant isolation
+  user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  deadlines           AcademicDeadline[]
+  timetableSlots      TimetableSlot[]
+  assignmentBriefs    AssignmentBrief[]
+  aiSummaries         AISummary[]
+
+  @@index([userId], name: "ix_courses_user_id")
+  @@map("courses")
+}
+
+// --------------------------------------------------------------------
+// 3. ACADEMIC DEADLINES & ASSESSMENTS
+// --------------------------------------------------------------------
+enum TaskType {
+  ASSIGNMENT
+  EXAM
+  TEST
+  QUIZ
+  LAB_REPORT
+  PROJECT
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model AcademicDeadline {
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String?      @map("user_id") @db.Uuid
+  courseId         String?      @map("course_id") @db.Uuid
+  title            String?      @db.VarChar(255)
+  description      String?      @db.Text
+  taskType         String?      @default("ASSIGNMENT") @map("task_type")
+  dueDate          DateTime?    @map("due_date") @db.Timestamptz(6)
+  priority         String?      @default("MEDIUM")
+  weightPercentage Float?       @map("weight_percentage") @db.DoublePrecision // Weight towards course grade (e.g. 15.0%)
+  gradeAchieved    Float?       @map("grade_achieved") @db.DoublePrecision // Score obtained (e.g. 85.0)
+  maxGrade         Float?       @default(100.0) @map("max_grade") @db.DoublePrecision
+  isCompleted      Boolean?     @default(false) @map("is_completed")
+  completedAt      DateTime?    @map("completed_at") @db.Timestamptz(6)
+  reminderSent     Boolean?     @default(false) @map("reminder_sent")
+  estimatedHours   Float?       @map("estimated_hours") @db.DoublePrecision
+  createdAt        DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime?    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Foreign keys
+  user             User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Composite indexes for rapid queries on deadlines
+  @@index([userId, isCompleted, dueDate], name: "ix_deadlines_user_status_due")
+  @@index([courseId, dueDate], name: "ix_deadlines_course_due")
+  @@index([dueDate], name: "ix_deadlines_due_date")
+  @@map("academic_deadlines")
+}
+
+// --------------------------------------------------------------------
+// 4. TIMETABLE & LECTURE VENUES
+// --------------------------------------------------------------------
+enum SlotType {
+  LECTURE
+  TUTORIAL
+  PRACTICAL
+  SEMINAR
+}
+
+model TimetableSlot {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  courseId    String    @map("course_id") @db.Uuid
+  dayOfWeek   Int       @map("day_of_week") @db.SmallInt // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+  startTime   String    @map("start_time") @db.VarChar(10) // "08:00"
+  endTime     String    @map("end_time") @db.VarChar(10) // "08:45"
+  venue       String?   @db.VarChar(120) // e.g., "Centenary Building 2", "Wartenweiler Library Lab 3"
+  slotType    SlotType  @default(LECTURE) @map("slot_type")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Foreign keys
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dayOfWeek, startTime], name: "ix_timetable_user_schedule")
+  @@index([courseId], name: "ix_timetable_course")
+  @@map("timetable_slots")
+}
+
+// --------------------------------------------------------------------
+// 5. LOW-DATA STUDY MATERIALS & CACHED RESOURCES
+// --------------------------------------------------------------------
+enum ResourceType {
+  SUMMARY
+  CHEATSHEET
+  TUTORIAL
+  PAST_PAPER
+  TRANSCRIPT
+}
+
+model StudyMaterial {
+  id                String       @id @default(uuid()) @db.Uuid
+  courseCode        String       @map("course_code") @db.VarChar(20) // e.g., "COS 212"
+  title             String       @db.VarChar(255)
+  description       String       @db.Text
+  resourceType      ResourceType @default(SUMMARY) @map("resource_type")
+  url               String       @db.VarChar(1024)
+  fileSizeKb        Int          @default(50) @map("file_size_kb")
+  isOfflineCached   Boolean      @default(true) @map("is_offline_cached")
+  qualityResolution String?      @map("quality_resolution") @db.VarChar(50) // "360p (Low Data)", "Text-only"
+  isApproved        Boolean      @default(true) @map("is_approved")
+  createdByUserId   String?      @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([courseCode, resourceType], name: "ix_materials_course_type")
+  @@map("study_materials")
+}
+
+// --------------------------------------------------------------------
+// 6. ASSIGNMENT BRIEFS & AI ROADMAPS
+// --------------------------------------------------------------------
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model AssignmentBrief {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  courseId         String    @map("course_id") @db.Uuid
+  assignmentTitle  String    @map("assignment_title") @db.VarChar(255)
+  fileName         String    @map("file_name") @db.VarChar(255)
+  rawExtractedText String    @map("raw_extracted_text") @db.Text
+  totalMarks       Float?    @map("total_marks") @db.DoublePrecision
+  weightPercentage Float?    @map("weight_percentage") @db.DoublePrecision
+  dueDate          DateTime  @map("due_date") @db.Timestamptz(6)
+  riskLevel        RiskLevel @default(MEDIUM) @map("risk_level")
+  parsedDataJson   Json?     @map("parsed_data_json") // Stored roadmap milestones, deliverables, rubrics
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Foreign keys
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate], name: "ix_briefs_user_due")
+  @@index([courseId], name: "ix_briefs_course")
+  @@map("assignment_briefs")
+}
+
+// --------------------------------------------------------------------
+// 7. ACTIVE RECALL FLASHCARDS & SPACED REPETITION (SM-2)
+// --------------------------------------------------------------------
+model FlashcardDeck {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  courseCode  String      @map("course_code") @db.VarChar(20) // e.g. "COS 212"
+  title       String      @db.VarChar(255)
+  description String?     @db.Text
+  colorCode   String      @default("#3b5b8c") @map("color_code") @db.VarChar(7)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Foreign keys & relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards       Flashcard[]
+
+  @@index([userId, courseCode], name: "ix_decks_user_course")
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id             String        @id @default(uuid()) @db.Uuid
+  deckId         String        @map("deck_id") @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  front          String        @db.Text
+  back           String        @db.Text
+  hint           String?       @db.Text
+  tags           String[]      @default([])
+  interval       Int           @default(0) // Interval in days
+  easeFactor     Float         @default(2.5) @map("ease_factor") @db.DoublePrecision // SuperMemo SM-2 multiplier (min 1.3)
+  repetition     Int           @default(0) // Number of successful consecutive reviews
+  nextReviewDate DateTime      @default(now()) @map("next_review_date") @db.Timestamptz(6)
+  lastReviewedAt DateTime?     @map("last_reviewed_at") @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Foreign keys
+  deck           FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deckId, nextReviewDate], name: "ix_flashcards_deck_due")
+  @@index([userId, nextReviewDate], name: "ix_flashcards_user_due")
+  @@map("flashcards")
+}
+
+// --------------------------------------------------------------------
+// 8. AI SUMMARIES & REASONING CACHE
+// --------------------------------------------------------------------
+model AISummary {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  courseId    String   @map("course_id") @db.Uuid
+  topic       String   @db.VarChar(255)
+  summaryText String   @map("summary_text") @db.Text
+  keyTakeaways String[] @default([]) @map("key_takeaways")
+  tokenCost   Int      @default(0) @map("token_cost")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, courseId], name: "ix_summaries_user_course")
+  @@map("ai_summaries")
+}
+
+// --------------------------------------------------------------------
+// 9. PEER STUDY PACKS & QR SHARING
+// --------------------------------------------------------------------
+model PeerStudyPack {
+  id             String   @id @default(uuid()) @db.Uuid
+  authorUserId   String   @map("author_user_id") @db.Uuid
+  shareCode      String   @unique @map("share_code") @db.VarChar(32)
+  title          String   @db.VarChar(255)
+  courseCode     String   @map("course_code") @db.VarChar(20)
+  description    String?  @db.Text
+  version        Int      @default(1)
+  packPayload    Json     @map("pack_payload") // Compressed JSON payload containing tasks, deck, slots
+  downloadCount  Int      @default(0) @map("download_count")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  author         User     @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([shareCode], name: "ix_study_packs_code")
+  @@map("peer_study_packs")
+}
+
+// --------------------------------------------------------------------
+// 10. AUDIT & ANALYTICS EVENTS
+// --------------------------------------------------------------------
+model AnalyticsEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(100)
+  courseCode String?  @map("course_code") @db.VarChar(20)
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], name: "ix_analytics_user_time")
+  @@map("analytics_events")
+}

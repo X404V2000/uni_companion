@@ -1,0 +1,101 @@
+// ====================================================================
+// PRISMA DATABASE SCHEMA - ROOT SCHEMA
+// Configured with Neon Serverless Postgres via NEON_URL
+// Models: Users, Courses, Deadlines
+// ====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NEON_URL")
+}
+
+// --------------------------------------------------------------------
+// 1. USERS & AUTHENTICATION
+// --------------------------------------------------------------------
+model Users {
+  id             String      @id @default(uuid()) @db.Uuid
+  email          String      @unique @db.VarChar(255)
+  hashedPassword String      @map("hashed_password") @db.VarChar(255)
+  fullName       String?     @map("full_name") @db.VarChar(255)
+  university     String?     @db.VarChar(120)
+  fieldOfStudy   String?     @default("BSc Computer Science") @map("field_of_study") @db.VarChar(150)
+  yearOfStudy    Int?        @default(1) @map("year_of_study") @db.SmallInt
+  termsVersion   String?     @default("1.0") @map("terms_version") @db.VarChar(50)
+  privacyVersion String?     @default("1.0") @map("privacy_version") @db.VarChar(50)
+  acceptedAt     DateTime?   @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  isActive       Boolean     @default(true) @map("is_active")
+  role           String      @default("student") @db.VarChar(50)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  // Relations
+  courses        Courses[]
+  deadlines      Deadlines[]
+
+  @@index([isActive], name: "ix_users_active")
+  @@map("users")
+}
+
+// --------------------------------------------------------------------
+// 2. COURSES / ACADEMIC MODULES
+// --------------------------------------------------------------------
+model Courses {
+  id                  String      @id @default(uuid()) @db.Uuid
+  userId              String      @map("user_id") @db.Uuid
+  code                String      @db.VarChar(20)
+  name                String      @db.VarChar(255)
+  colorCode           String      @default("#3b5b8c") @map("color_code") @db.VarChar(7)
+  department          String?     @db.VarChar(100)
+  faculty             String?     @db.VarChar(100)
+  dpSubminimum        Float?      @default(40.0) @map("dp_subminimum") @db.DoublePrecision
+  syllabusDescription String?     @map("syllabus_description") @db.Text
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  // Relations
+  user                Users       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deadlines           Deadlines[]
+
+  @@unique([userId, code], name: "uq_user_module_code")
+  @@index([userId], name: "ix_modules_user_id")
+  @@map("modules")
+}
+
+// --------------------------------------------------------------------
+// 3. ACADEMIC DEADLINES & ASSESSMENTS
+// --------------------------------------------------------------------
+model Deadlines {
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  courseId         String       @map("module_id") @db.Uuid
+  title            String       @db.VarChar(255)
+  description      String?      @db.Text
+  taskType         String?      @default("ASSIGNMENT") @map("task_type")
+  dueDate          DateTime     @map("due_date") @db.Timestamptz(6)
+  priority         String?      @default("MEDIUM")
+  weightPercentage Float?       @map("weight_percentage") @db.DoublePrecision
+  gradeAchieved    Float?       @map("grade_achieved") @db.DoublePrecision
+  maxGrade         Float?       @default(100.0) @map("max_grade") @db.DoublePrecision
+  isCompleted      Boolean      @default(false) @map("is_completed")
+  completedAt      DateTime?    @map("completed_at") @db.Timestamptz(6)
+  reminderSent     Boolean      @default(false) @map("reminder_sent")
+  estimatedHours   Float?       @map("estimated_hours") @db.DoublePrecision
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user             Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Courses      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isCompleted, dueDate], name: "ix_academic_tasks_user_status_due")
+  @@index([courseId, dueDate], name: "ix_academic_tasks_module_due")
+  @@index([dueDate], name: "ix_academic_tasks_due_date")
+  @@index([userId, priority], name: "ix_academic_tasks_user_priority")
+  @@map("academic_tasks")
+}

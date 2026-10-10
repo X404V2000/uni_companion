@@ -13,6 +13,7 @@ import { useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { summarize } from "../lib/api";
 import { extractTextFromFile, UnsupportedFileError } from "../lib/fileText";
+import { renderMarkdown } from "../lib/markdown";
 import { describeError } from "../lib/session";
 import { ErrorState } from "./states";
 
@@ -262,11 +263,17 @@ function SummariesTab({
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]">
             Summary
           </p>
-          {/* whitespace-pre-wrap keeps the guide's structure visible without a
-              markdown renderer. */}
-          <pre className="mt-3 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[var(--color-fg)]">
-            {summary}
-          </pre>
+          {/* RENDERED, NOT RAW.
+              This was a <pre> with whitespace-pre-wrap, chosen when the summary was plain
+              text. The prompt now asks for a structured study guide with headings, bullets
+              and bold terms, so a <pre> showed the students the markup itself - literal
+              "##" and "**" in the middle of their notes. renderMarkdown handles exactly the
+              subset our own prompt emits, adds no dependency, and was written for this
+              screen. It also humanises LaTeX, so a formula comes out as text rather than
+              as backslash commands. */}
+          <div className="mt-3 text-[12px] leading-relaxed text-[var(--color-fg)]">
+            {renderMarkdown(summary)}
+          </div>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-17T19:45:00+02:00",
+  "updated_at": "2026-10-17T22:10:00+02:00",
   "owner": "tech-lead",
   "decisions": [
     {
@@ -15,7 +15,10 @@
         "Agents committing directly to main — no review surface, no revert point",
         "Automated merging on green CI — CI does not check product judgement"
       ],
-      "affects": ["all members", ".github/workflows/ci.yml"]
+      "affects": [
+        "all members",
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "DEC-0002",
@@ -28,7 +31,10 @@
         "Free-text notes in conversation/ — not committed, so a fresh clone has no context",
         "GitHub Issues only — not visible to an agent reading the repo; duplicates state"
       ],
-      "affects": ["all members", "agents/state/"]
+      "affects": [
+        "all members",
+        "agents/state/"
+      ]
     },
     {
       "id": "DEC-0003",
@@ -40,7 +46,9 @@
       "rejected_alternatives": [
         "Allowing dev dependencies freely — dev deps still run in CI and on the founder's machine"
       ],
-      "affects": ["all members"]
+      "affects": [
+        "all members"
+      ]
     },
     {
       "id": "DEC-0004",
@@ -52,7 +60,10 @@
       "rejected_alternatives": [
         "Trusting a green suite — green is not evidence that the test exercised the behaviour"
       ],
-      "affects": ["all members", "agents/state/handoffs.json"]
+      "affects": [
+        "all members",
+        "agents/state/handoffs.json"
+      ]
     },
     {
       "id": "DEC-0005",
@@ -64,7 +75,27 @@
       "rejected_alternatives": [
         "Following the document and adjusting during implementation — that is how capability gets deleted"
       ],
-      "affects": ["all members", "AGENTS.md §6"]
+      "affects": [
+        "all members",
+        "AGENTS.md §6"
+      ]
+    },
+    {
+      "id": "DEC-0006",
+      "title": "FNB artefact is an APK, not an AAB",
+      "decided_by": "founder",
+      "at": "2026-10-17T22:10:00+02:00",
+      "decision": "The FNB submission is a directly installed APK. No Google Play listing, no developer account, no store review.",
+      "reasoning": "Judges install an app; they do not browse a store listing. An APK removes review time and account setup from the critical path, which matters because runway is the current constraint and the submission date is fixed.",
+      "rejected_alternatives": [
+        "AAB via Google Play - adds a developer account, a listing, and review latency to a deadline we cannot move",
+        "Web link only - judges install an app; a link does not demonstrate an installable product"
+      ],
+      "affects": [
+        "TASK-0003",
+        "devops",
+        "eas.json build profile"
+      ]
     }
   ]
 }

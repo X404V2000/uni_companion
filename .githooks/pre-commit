@@ -5,16 +5,16 @@
 # WHY THIS EXISTS
 # ---------------
 # GitHub branch protection is unavailable on this repository: it is private, and
-# protection requires GitHub Pro or a public repo. Server-side enforcement is not
-# an option today, so this is the local guard.
+# protection requires GitHub Pro or a public repository. Made final on
+# 2026-10-17: the founder has no budget for paid tiers until runway recovers.
 #
-# It catches the realistic failure: an agent (or a human on autopilot) running
-# `git commit` while still on `main`. That is a mistake, not an attack, and a
-# mistake is what this is sized for.
+# So this is the guard, permanently for now. It catches the realistic failure:
+# an agent (or a human on autopilot) running `git commit` while still on `main`.
+# That is a mistake, not an attack, and a mistake is what this is sized for.
 #
 # LIMITATION, STATED PLAINLY: `git commit --no-verify` bypasses it, and it only
-# runs on machines where `core.hooksPath` has been set. It is not a substitute
-# for real branch protection. See agents/README.md §7.
+# runs in clones where `scripts/setup_hooks.sh` has been run. It is not a
+# substitute for server-side enforcement. See agents/README.md §7.
 
 PROTECTED="main"
 current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -42,12 +42,89 @@ MSG
   exit 1
 fi
 
+# ───────────────────────────────────────────────────────────────────────────
+# Secret scan on staged content.
+#
+# This project has leaked credentials three times: a demo admin password in a
+# plan report, a password hard-coded into the harness built to catch credential
+# leaks, and a staging database password tracked on six branches. With server-
+# side protection unavailable, a committed secret cannot be caught at the
+# server - so it is caught here, before the commit exists.
+#
+# Deliberately narrow: these are patterns that are almost never a false
+# positive in this codebase. A noisy guard gets bypassed, and a bypassed guard
+# protects nothing.
+# ───────────────────────────────────────────────────────────────────────────
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$staged_files" ]; then
+  # Files that must never be staged at all.
+  forbidden=$(echo "$staged_files" | grep -E '(^|/)(\.env($|\.)|.*\.pem$|.*\.key$|id_rsa)' | grep -v '\.env\.example' || true)
+  if [ -n "$forbidden" ]; then
+    cat >&2 <<MSG
+
+  ─────────────────────────────────────────────────────────────────────────
+  BLOCKED: these files must never be committed:
+
+$(echo "$forbidden" | sed 's/^/      /')
+
+  Secrets live in the deployment dashboards, never in the repository.
+  If you need a key locally, keep it out of git: .gitignore it.
+  ─────────────────────────────────────────────────────────────────────────
+
+MSG
+    exit 1
+  fi
+
+  # Content scan. --text so binary files are inspected; -I skips them instead,
+  # which is the safer default for a guard that must not false-positive.
+  hits=""
+  for f in $staged_files; do
+    [ -f "$f" ] || continue
+    found=$(grep -nE \
+      -e '-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----' \
+      -e 'ghp_[A-Za-z0-9]{36}' \
+      -e 'gh[pousr]_[A-Za-z0-9]{36,}' \
+      -e 'sk-[A-Za-z0-9]{32,}' \
+      -e 'AIza[0-9A-Za-z_-]{35}' \
+      -e 'postgres(ql)?://[^:@/ ]+:[^@/ ]+@' \
+      -e '(password|passwd|secret|api_key|token)[[:space:]]*[:=][[:space:]]*["'\''][^"'\'' ]{12,}["'\'']' \
+      -i "$f" 2>/dev/null | grep -v '\.example:' || true)
+    if [ -n "$found" ]; then
+      hits="$hits$f:{$(echo "$found" | cut -d: -f1 | tr '\n' ',' | sed 's/,$//')}\n"
+    fi
+  done
+
+  if [ -n "$hits" ]; then
+    cat >&2 <<MSG
+
+  ─────────────────────────────────────────────────────────────────────────
+  BLOCKED: possible credential in staged content.
+
+$(printf "$hits" | sed 's/^/      /')
+
+  This project has leaked credentials three times. Do not commit one.
+
+    - use a placeholder in tests
+    - read real values from the environment
+    - if this IS a real secret, remove it from the file, rotate it, and do
+      not reuse it
+
+  If this is a false positive (e.g. a documented example), use:
+      git commit --no-verify ...
+  ─────────────────────────────────────────────────────────────────────────
+
+MSG
+    exit 1
+  fi
+fi
+
 # Run the project's own lint on staged Python files, if ruff is available.
-# This is advisory: a missing venv must not block a commit.
+# Advisory: a missing venv must not block a commit.
 if command -v ruff >/dev/null 2>&1; then
-  staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
-  if [ -n "$staged" ]; then
-    if ! echo "$staged" | xargs ruff check --quiet 2>/dev/null; then
+  staged_py=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+  if [ -n "$staged_py" ]; then
+    if ! echo "$staged_py" | xargs ruff check --quiet 2>/dev/null; then
       echo "" >&2
       echo "  ruff found problems in staged files. Fix them or commit with --no-verify." >&2
       exit 1

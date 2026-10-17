@@ -75,6 +75,15 @@ is stale — trust the tree.
    `push`/`pull_request` to `main` and `develop`). Your branch alone does not get CI — the PR does.
    Do not report work as verified until CI on the PR is green.
 5. **One task per PR.** A PR that does three things cannot be reviewed or reverted cleanly.
+6. **Enable the local hooks in your clone, once:**
+   ```bash
+   ./scripts/setup_hooks.sh
+   ```
+   They refuse a commit on `main`, a push to `main`, a force-push, and a remote branch delete.
+   This is the only mechanical enforcement that exists: **GitHub branch protection is
+   unavailable on this private repository** (it requires GitHub Pro or a public repo). The hooks
+   are a guard against mistakes, not against a determined actor. `--no-verify` skips them, so
+   the rule still binds you even when the hook does not. See `agents/README.md` §7.
 
 ### 4.2 Packages
 

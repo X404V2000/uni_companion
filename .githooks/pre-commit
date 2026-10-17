@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# pre-commit — refuses to commit directly to the protected branch.
+#
+# WHY THIS EXISTS
+# ---------------
+# GitHub branch protection is unavailable on this repository: it is private, and
+# protection requires GitHub Pro or a public repo. Server-side enforcement is not
+# an option today, so this is the local guard.
+#
+# It catches the realistic failure: an agent (or a human on autopilot) running
+# `git commit` while still on `main`. That is a mistake, not an attack, and a
+# mistake is what this is sized for.
+#
+# LIMITATION, STATED PLAINLY: `git commit --no-verify` bypasses it, and it only
+# runs on machines where `core.hooksPath` has been set. It is not a substitute
+# for real branch protection. See agents/README.md §7.
+
+PROTECTED="main"
+current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+if [ "$current" = "$PROTECTED" ]; then
+  cat >&2 <<'MSG'
+
+  ─────────────────────────────────────────────────────────────────────────
+  BLOCKED: you are on 'main'.
+
+  Every change goes through a branch and a pull request:
+
+      git checkout -b agent/<your-id> origin/main   # if you have no branch
+      git checkout agent/<your-id>                  # if you already have one
+      git rebase origin/main                        # start from current main
+
+  Then commit, push to your branch, and open a PR. The founder merges.
+
+  If you genuinely need to commit to main (founder present, emergency), use:
+      git commit --no-verify ...
+  and record why in agents/state/handoffs.json.
+  ─────────────────────────────────────────────────────────────────────────
+
+MSG
+  exit 1
+fi
+
+# Run the project's own lint on staged Python files, if ruff is available.
+# This is advisory: a missing venv must not block a commit.
+if command -v ruff >/dev/null 2>&1; then
+  staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+  if [ -n "$staged" ]; then
+    if ! echo "$staged" | xargs ruff check --quiet 2>/dev/null; then
+      echo "" >&2
+      echo "  ruff found problems in staged files. Fix them or commit with --no-verify." >&2
+      exit 1
+    fi
+  fi
+fi
+
+exit 0

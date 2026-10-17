@@ -1,0 +1,26 @@
+{
+  "$schema": "../state.schema.json",
+  "version": "1.0.0",
+  "updated_at": "2026-10-17T19:45:00+02:00",
+  "owner": "any — raise your own blockers",
+  "blockers": [
+    {
+      "id": "BLK-0001",
+      "task_id": "TASK-0003",
+      "raised_by": "devops",
+      "at": "2026-10-17T19:45:00+02:00",
+      "question": "What permanent app identity should the mobile app use (android.package / ios.bundleIdentifier), and should the FNB artefact be an APK or an AAB?",
+      "why_blocked": "Both identifiers are permanent once published and cannot be changed later; choosing them is a founder decision, not an engineering one. No eas.json or package identifier exists, so no build can start.",
+      "options": [
+        "za.co.varsitycompanion (recommended — matches the product name and the .co.za domain)",
+        "com.varsitycompanion.app",
+        "Something tied to the registered business entity"
+      ],
+      "recommendation": "Use za.co.varsitycompanion and build an APK for FNB judges. Judges install an app; they do not browse a store listing, so an APK removes review time and developer-account setup from the critical path.",
+      "status": "open",
+      "answered_by": null,
+      "answer": null,
+      "answered_at": null
+    }
+  ]
+}

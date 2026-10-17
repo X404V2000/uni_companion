@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agents/state.schema.json",
+  "title": "Varsity Companion agent coordination schema",
+  "description": "Defines the four coordination files under agents/state/. Every agent reads all four at session start. Owners write; everyone reads. History is appended, never deleted.",
+  "definitions": {
+    "id": {
+      "type": "string",
+      "pattern": "^(TASK|HO|BLK|DEC)-[0-9]{4}$",
+      "description": "Stable identifier. Prefix per file: TASK- tasks, HO- handoffs, BLK- blockers, DEC- decisions. Zero-padded to 4."
+    },
+    "memberId": {
+      "type": "string",
+      "enum": ["tech-lead", "dev-backend", "dev-web", "dev-mobile", "qa", "devops", "security", "pm", "uiux", "ba", "founder"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 with timezone. Never a relative phrase."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["todo", "in_progress", "blocked", "in_review", "done", "cancelled"]
+    }
+  },
+  "tasks": {
+    "type": "object",
+    "required": ["$schema", "version", "tasks"],
+    "properties": {
+      "tasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "owner", "status", "created_by", "created_at"],
+          "properties": {
+            "id": { "$ref": "#/definitions/id" },
+            "title": { "type": "string", "maxLength": 200 },
+            "description": {
+              "type": "string",
+              "description": "Precise acceptance criteria. A task without testable criteria is not ready to start."
+            },
+            "owner": { "$ref": "#/definitions/memberId" },
+            "branch": { "type": "string", "pattern": "^agent/" },
+            "status": { "$ref": "#/definitions/status" },
+            "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+            "depends_on": { "type": "array", "items": { "$ref": "#/definitions/id" } },
+            "acceptance_criteria": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1,
+              "description": "Each must be falsifiable. 'Works' is not a criterion; \"returns 401 for a revoked token\" is."
+            },
+            "pr": { "type": ["string", "null"], "description": "PR URL once opened, else null." },
+            "created_by": { "$ref": "#/definitions/memberId" },
+            "created_at": { "$ref": "#/definitions/timestamp" },
+            "history": {
+              "type": "array",
+              "description": "Append-only status transitions.",
+              "items": {
+                "type": "object",
+                "required": ["at", "by", "status"],
+                "properties": {
+                  "at": { "$ref": "#/definitions/timestamp" },
+                  "by": { "$ref": "#/definitions/memberId" },
+                  "status": { "$ref": "#/definitions/status" },
+                  "note": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "handoffs": {
+    "type": "object",
+    "required": ["handoffs"],
+    "properties": {
+      "handoffs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "task_id", "from", "to", "at", "summary", "evidence"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^HO-[0-9]{4}$" },
+            "task_id": { "$ref": "#/definitions/id" },
+            "from": { "$ref": "#/definitions/memberId" },
+            "to": { "$ref": "#/definitions/memberId" },
+            "at": { "$ref": "#/definitions/timestamp" },
+            "summary": { "type": "string", "maxLength": 1000 },
+            "evidence": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1,
+              "description": "Commands run and their results, or file:line references. A handoff with no evidence is not a handoff."
+            },
+            "changed_files": { "type": "array", "items": { "type": "string" } },
+            "commit": { "type": "string" },
+            "pr": { "type": ["string", "null"] },
+            "known_limitations": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  },
+  "blockers": {
+    "type": "object",
+    "required": ["blockers"],
+    "properties": {
+      "blockers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "task_id", "raised_by", "at", "question", "status"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^BLK-[0-9]{4}$" },
+            "task_id": { "$ref": "#/definitions/id" },
+            "raised_by": { "$ref": "#/definitions/memberId" },
+            "at": { "$ref": "#/definitions/timestamp" },
+            "question": {
+              "type": "string",
+              "description": "One answerable question. 'It is not working' is not answerable; 'May I add playwright as a devDependency to gate the mobile harness?' is."
+            },
+            "why_blocked": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "string" } },
+            "recommendation": { "type": "string" },
+            "status": { "enum": ["open", "answered", "resolved", "withdrawn"] },
+            "answered_by": { "$ref": "#/definitions/memberId" },
+            "answer": { "type": "string" },
+            "answered_at": { "$ref": "#/definitions/timestamp" }
+          }
+        }
+      }
+    }
+  },
+  "decisions": {
+    "type": "object",
+    "required": ["decisions"],
+    "properties": {
+      "decisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "decided_by", "at", "decision", "reasoning"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^DEC-[0-9]{4}$" },
+            "title": { "type": "string" },
+            "decided_by": { "$ref": "#/definitions/memberId" },
+            "at": { "$ref": "#/definitions/timestamp" },
+            "decision": { "type": "string" },
+            "reasoning": {
+              "type": "string",
+              "description": "Why, not what. A decision without reasoning is re-litigated within a week."
+            },
+            "rejected_alternatives": { "type": "array", "items": { "type": "string" } },
+            "affects": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

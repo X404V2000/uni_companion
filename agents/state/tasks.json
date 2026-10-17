@@ -1,0 +1,76 @@
+{
+  "$schema": "../state.schema.json",
+  "version": "1.0.0",
+  "updated_at": "2026-10-17T19:45:00+02:00",
+  "owner": "tech-lead",
+  "tasks": [
+    {
+      "id": "TASK-0001",
+      "title": "D5 — adopt shared state components in SummariesTab and PlannerTab",
+      "description": "Replace inline loading/error/empty handling in the two highest-value tabs with components/states/{Loading,ErrorState,EmptyState}. OverviewTab and MaterialsTab are a documented follow-up, NOT in this task. If adoption requires changing data flow or copy, stop and raise BLK.",
+      "owner": "dev-web",
+      "branch": "agent/dev-web",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "SummariesTab uses LoadingSkeleton, ErrorState, EmptyState",
+        "PlannerTab uses LoadingSkeleton, ErrorState, EmptyState",
+        "Both tabs behave identically to before except for the state components",
+        "OverviewTab and MaterialsTab have a one-line note recording the documented divergence",
+        "npx tsc --noEmit clean in frontend/",
+        "Each tab checked in a browser while online and offline"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-17T19:45:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0002",
+      "title": "Mobile device pass — four acceptance items on physical hardware",
+      "description": "Founder-executed. Expo Go, EXPO_PUBLIC_API_BASE=https://uni-companion.onrender.com. Items: (1) five tabs swap content; (2) airplane mode + reopen Planner shows the staleness banner; (3) an offline write is visibly refused; (4) sit past a 15-minute token expiry and confirm no sign-out.",
+      "owner": "founder",
+      "branch": "none",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "All five tabs render their own content on device",
+        "Staleness banner appears in airplane mode and clears on reconnect",
+        "An offline write is refused with a visible reason, not a false save",
+        "No sign-out after a 15-minute expiry while actively using the app"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-17T19:45:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0003",
+      "title": "Installability — EAS build configuration for the FNB artefact",
+      "description": "BLOCKED on founder decisions: android.package and ios.bundleIdentifier (permanent app identity), and APK vs AAB. Recommended: APK for judges, not a store submission. No eas.json exists; app.json has no package identifiers.",
+      "owner": "devops",
+      "branch": "agent/devops",
+      "status": "blocked",
+      "priority": "P1",
+      "depends_on": ["BLK-0001"],
+      "acceptance_criteria": [
+        "eas.json exists with a preview/build profile",
+        "android.package and ios.bundleIdentifier set in app.json",
+        "A build completes and installs on a physical Android device"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-17T19:45:00+02:00",
+      "history": [
+        {
+          "at": "2026-10-17T19:45:00+02:00",
+          "by": "tech-lead",
+          "status": "blocked",
+          "note": "Awaiting founder identity decision — see BLK-0001"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "../state.schema.json",
+  "version": "1.0.0",
+  "updated_at": "2026-10-17T19:45:00+02:00",
+  "owner": "any — append your own handoffs; never edit someone else's",
+  "handoffs": [
+    {
+      "id": "HO-0001",
+      "task_id": "TASK-0001",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-17T19:45:00+02:00",
+      "summary": "Scope ruling for D5: adopt shared state components in SummariesTab and PlannerTab only, then stop. OverviewTab and MaterialsTab are a documented divergence, not part of this pass. The bound: if adoption requires changing data flow, feature behaviour, or copy beyond the state components, stop and raise a blocker.",
+      "evidence": [
+        "frontend/src/components/states/ — created by the previous web engineer (Loading, ErrorState, EmptyState)",
+        "Sources: conversation/scope_thread_b_part2_delta.md §2.5",
+        "Reasoning: two components is the largest change acceptable in one pass to already-working code"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": [
+        "OverviewTab and MaterialsTab will remain inconsistent until a follow-up task"
+      ]
+    }
+  ]
+}

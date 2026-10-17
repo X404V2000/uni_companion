@@ -1,0 +1,70 @@
+{
+  "$schema": "../state.schema.json",
+  "version": "1.0.0",
+  "updated_at": "2026-10-17T19:45:00+02:00",
+  "owner": "tech-lead",
+  "decisions": [
+    {
+      "id": "DEC-0001",
+      "title": "Agent branches and review model",
+      "decided_by": "founder",
+      "at": "2026-10-17T19:30:00+02:00",
+      "decision": "Every agent pushes only to agent/<their-id> and opens a pull request into main. The founder reviews and merges. Agents never merge, never push to main, never force-push.",
+      "reasoning": "A single unreviewed writer is how a working codebase becomes a broken one. A branch plus a PR gives every change a review surface and a clean revert point.",
+      "rejected_alternatives": [
+        "Agents committing directly to main — no review surface, no revert point",
+        "Automated merging on green CI — CI does not check product judgement"
+      ],
+      "affects": ["all members", ".github/workflows/ci.yml"]
+    },
+    {
+      "id": "DEC-0002",
+      "title": "Agents communicate through committed JSON, not prose",
+      "decided_by": "founder",
+      "at": "2026-10-17T19:30:00+02:00",
+      "decision": "Coordination lives in agents/state/{tasks,handoffs,blockers,decisions}.json, committed to the repository. Every agent reads all four at session start. Append-only history.",
+      "reasoning": "Prose handoffs are paraphrased or forgotten between sessions. A structured record with ids, owners, timestamps and evidence survives a session ending and a different agent picking the work up.",
+      "rejected_alternatives": [
+        "Free-text notes in conversation/ — not committed, so a fresh clone has no context",
+        "GitHub Issues only — not visible to an agent reading the repo; duplicates state"
+      ],
+      "affects": ["all members", "agents/state/"]
+    },
+    {
+      "id": "DEC-0003",
+      "title": "No package installation without founder approval",
+      "decided_by": "founder",
+      "at": "2026-10-17T19:30:00+02:00",
+      "decision": "No agent installs any package, library, or dependency without explicit founder approval, sought through a blockers entry.",
+      "reasoning": "Every dependency is a supply-chain and maintenance liability. This project has already shipped two leaked-credential incidents and an abandoned second stack; dependency drift is the same class of uncontrolled change.",
+      "rejected_alternatives": [
+        "Allowing dev dependencies freely — dev deps still run in CI and on the founder's machine"
+      ],
+      "affects": ["all members"]
+    },
+    {
+      "id": "DEC-0004",
+      "title": "Verify by running, and prove the test can fail",
+      "decided_by": "tech-lead",
+      "at": "2026-10-17T19:45:00+02:00",
+      "decision": "Before reporting any check as passing, revert the fix and show the check failing. Every handoff must include the commands run and their results.",
+      "reasoning": "This rule has caught six real defects on this project, including two security properties and a test that was passing over an empty list. A check that cannot fail manufactures confidence, which is worse than no check.",
+      "rejected_alternatives": [
+        "Trusting a green suite — green is not evidence that the test exercised the behaviour"
+      ],
+      "affects": ["all members", "agents/state/handoffs.json"]
+    },
+    {
+      "id": "DEC-0005",
+      "title": "Stale planning documents: trust the tree",
+      "decided_by": "tech-lead",
+      "at": "2026-10-17T19:45:00+02:00",
+      "decision": "When a planning document and the repository disagree, the repository wins, and the conflict is recorded in a handoff. Verify a component exists before building it.",
+      "reasoning": "Three successive planning documents described the repo months out of date, and following one literally would have deleted working file upload. Six items across two scopes were already built.",
+      "rejected_alternatives": [
+        "Following the document and adjusting during implementation — that is how capability gets deleted"
+      ],
+      "affects": ["all members", "AGENTS.md §6"]
+    }
+  ]
+}

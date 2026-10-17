@@ -186,13 +186,39 @@ push to agent/team-setup       -> ALLOWED, exit 0   <- control: normal work stil
 realistic mistake — an agent on autopilot running the wrong command — not a defence against a
 determined actor.
 
-### The upgrade, when there is budget
+### The secret scan (added when server protection was ruled out)
+
+GitHub protection is **unavailable until the company has runway** (the founder has no budget
+for paid tiers, 2026-10-17). A committed secret therefore cannot be caught at the server, so
+`pre-commit` catches it before the commit exists:
+
+- refuses `.env`, `*.pem`, `*.key`, `id_rsa` outright
+- scans staged content for private keys, GitHub/Slack/OpenAI/Google tokens, database URLs with
+  inline credentials, and `password=`/`secret=`/`api_key=` assignments of real length
+
+```
+fake ghp_ token staged   -> BLOCKED, exit 1
+real repo files staged   -> ALLOWED, exit 0   <- control
+```
+
+The patterns are deliberately narrow. This project has leaked credentials three times; a noisy
+guard gets bypassed, and a bypassed guard protects nothing.
+
+### Why the free layer is sufficient here
+
+**The founder is the only collaborator on the repository.** Branch protection exists mainly to
+stop *another person* pushing to `main`. There is no other person: the only writers are the
+founder and agents running under his credentials. For a single-maintainer repo the realistic
+risk is an agent making a mistake, which is precisely what the hooks catch.
+
+### If the repo ever gains contributors, or runway returns
 
 **GitHub Pro (~$4/month)** enables real server-side protection on a private repo: require a PR
 before merging, block force-pushes, block direct pushes to `main`, and require CI to pass. That
-is the only layer an agent cannot talk its way past. Recommended before the team scales up.
-**Making the repo public also enables it for free, but this project has a credential-leak
-history; public is not the right trade.**
+is the only layer an agent cannot talk its way past. It becomes necessary the moment a second
+human has write access — not before. **Making the repo public also enables it for free, but
+this project has a credential-leak history; public is not the right trade.**
+
 
 ---
 

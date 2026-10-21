@@ -148,7 +148,81 @@ The PM's report is the honest one: it names what is late, what is stuck, and wha
 
 ---
 
-## 7. Why it is built this way
+## 7. What actually enforces the rules
+
+**GitHub branch protection is unavailable on this repository.** It is private, and protection
+(GitHub's "branch protection rules" or "rulesets") requires **GitHub Pro** or a public
+repository. Verified: the API returns
+`403 — Upgrade to GitHub Pro or make this repository public to enable this feature`, even for
+the repository owner with admin scope.
+
+So the rules are enforced in two layers, and it matters which is which:
+
+| Layer | Enforces | Bypassable? |
+|---|---|---|
+| **Briefs** (`agents/team/*.md`) | The intent. An agent that reads its brief does not attempt a forbidden action | Yes — an agent that ignores its brief |
+| **Local git hooks** (`.githooks/`) | Refuses a commit on `main`, a push to `main`, a force-push, and a remote branch delete | Yes — `--no-verify`, and only if the hooks are enabled in that clone |
+| **GitHub** | Nothing beyond ordinary repo permissions | — |
+
+### The hooks
+
+`.githooks/pre-commit` and `.githooks/pre-push`, committed and versioned. Enable them in any
+clone with:
+
+```bash
+./scripts/setup_hooks.sh
+```
+
+They were verified in both directions before being relied on:
+
+```
+commit on main                 -> BLOCKED, exit 1
+push to main                   -> BLOCKED, exit 1 (also caught a would-be history rewrite)
+push to agent/team-setup       -> ALLOWED, exit 0   <- control: normal work still works
+```
+
+**What they do not do:** they do not run in a fresh clone until `setup_hooks.sh` is run, and
+`git commit --no-verify` / `git push --no-verify` skips them. They are a guard against the
+realistic mistake — an agent on autopilot running the wrong command — not a defence against a
+determined actor.
+
+### The secret scan (added when server protection was ruled out)
+
+GitHub protection is **unavailable until the company has runway** (the founder has no budget
+for paid tiers, 2026-10-17). A committed secret therefore cannot be caught at the server, so
+`pre-commit` catches it before the commit exists:
+
+- refuses `.env`, `*.pem`, `*.key`, `id_rsa` outright
+- scans staged content for private keys, GitHub/Slack/OpenAI/Google tokens, database URLs with
+  inline credentials, and `password=`/`secret=`/`api_key=` assignments of real length
+
+```
+fake ghp_ token staged   -> BLOCKED, exit 1
+real repo files staged   -> ALLOWED, exit 0   <- control
+```
+
+The patterns are deliberately narrow. This project has leaked credentials three times; a noisy
+guard gets bypassed, and a bypassed guard protects nothing.
+
+### Why the free layer is sufficient here
+
+**The founder is the only collaborator on the repository.** Branch protection exists mainly to
+stop *another person* pushing to `main`. There is no other person: the only writers are the
+founder and agents running under his credentials. For a single-maintainer repo the realistic
+risk is an agent making a mistake, which is precisely what the hooks catch.
+
+### If the repo ever gains contributors, or runway returns
+
+**GitHub Pro (~$4/month)** enables real server-side protection on a private repo: require a PR
+before merging, block force-pushes, block direct pushes to `main`, and require CI to pass. That
+is the only layer an agent cannot talk its way past. It becomes necessary the moment a second
+human has write access — not before. **Making the repo public also enables it for free, but
+this project has a credential-leak history; public is not the right trade.**
+
+
+---
+
+## 8. Why it is built this way
 
 **Structured coordination over prose.** Prose handoffs get paraphrased or forgotten between
 sessions. A JSON record with ids, owners, timestamps and evidence survives a session ending and

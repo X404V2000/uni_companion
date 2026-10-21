@@ -16,7 +16,7 @@ POPIA-compliant handling of student data.
 
 | Piece | URL | Notes |
 |---|---|---|
-| Web frontend | `https://uni-companion.21401284.workers.dev` | Cloudflare Workers |
+| Web frontend | `https://uni-companion.scrapymog.workers.dev` | Cloudflare Workers |
 | Backend API | `https://uni-companion.onrender.com` | Render, Docker |
 | Database | Neon (`eu-west-2`) | Migration `0012` |
 

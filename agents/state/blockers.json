@@ -9,14 +9,31 @@
       "task_id": "TASK-0003",
       "raised_by": "devops",
       "at": "2026-10-17T19:45:00+02:00",
-      "question": "What permanent app identity should the mobile app use (android.package / ios.bundleIdentifier), and should the FNB artefact be an APK or an AAB?",
-      "why_blocked": "Both identifiers are permanent once published and cannot be changed later; choosing them is a founder decision, not an engineering one. No eas.json or package identifier exists, so no build can start.",
+      "question": "Which artefact should the FNB submission be — an APK or an AAB? (The app identity, android.package / ios.bundleIdentifier, is the separate half of this blocker and is still open.)",
+      "why_blocked": "It decides the entire build path: an APK is installed directly by judges and needs no store account or review; an AAB requires a Google Play listing, a developer account, and review time. No eas.json or package identifier exists, so no build can start either way.",
       "options": [
-        "za.co.varsitycompanion (recommended — matches the product name and the .co.za domain)",
-        "com.varsitycompanion.app",
-        "Something tied to the registered business entity"
+        "APK, installed directly by judges (chosen)",
+        "AAB, via a Google Play store listing"
       ],
-      "recommendation": "Use za.co.varsitycompanion and build an APK for FNB judges. Judges install an app; they do not browse a store listing, so an APK removes review time and developer-account setup from the critical path.",
+      "recommendation": "APK. Judges install an app; they do not browse a store listing, so an APK removes review time and developer-account setup from the critical path.",
+      "status": "answered",
+      "answered_by": "founder",
+      "answer": "APK. Not an AAB, not a store submission.",
+      "answered_at": "2026-10-17T22:10:00+02:00"
+    },
+    {
+      "id": "BLK-0002",
+      "task_id": "TASK-0003",
+      "raised_by": "devops",
+      "at": "2026-10-17T22:10:00+02:00",
+      "question": "Confirm the permanent app identifier 'za.co.varsitycompanion' for android.package and ios.bundleIdentifier, and confirm an Expo account email to use for EAS.",
+      "why_blocked": "The identifier is permanent once an app is published and cannot be changed later. EAS builds also require an Expo account — the build runs in Expo's cloud, not on this machine. Neither exists yet.",
+      "options": [
+        "za.co.varsitycompanion (recommended)",
+        "com.varsitycompanion.app",
+        "A different name tied to the business entity"
+      ],
+      "recommendation": "za.co.varsitycompanion. It matches the .co.za domain and the product name, and it is the kind of identifier a South African business keeps.",
       "status": "open",
       "answered_by": null,
       "answer": null,

@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-17T19:45:00+02:00",
+  "updated_at": "2026-10-21T11:35:00+02:00",
   "owner": "tech-lead",
   "tasks": [
     {
@@ -10,7 +10,7 @@
       "description": "Replace inline loading/error/empty handling in the two highest-value tabs with components/states/{Loading,ErrorState,EmptyState}. OverviewTab and MaterialsTab are a documented follow-up, NOT in this task. If adoption requires changing data flow or copy, stop and raise BLK.",
       "owner": "dev-web",
       "branch": "agent/dev-web",
-      "status": "todo",
+      "status": "cancelled",
       "priority": "P1",
       "depends_on": [],
       "acceptance_criteria": [
@@ -24,7 +24,14 @@
       "pr": null,
       "created_by": "tech-lead",
       "created_at": "2026-10-17T19:45:00+02:00",
-      "history": []
+      "history": [
+        {
+          "at": "2026-10-21T11:35:00+02:00",
+          "by": "tech-lead",
+          "status": "cancelled",
+          "note": "Deprioritised: user feedback work takes the Sunday deadline. Not visible in a demo."
+        }
+      ]
     },
     {
       "id": "TASK-0002",
@@ -54,7 +61,9 @@
       "branch": "agent/devops",
       "status": "blocked",
       "priority": "P1",
-      "depends_on": ["BLK-0001"],
+      "depends_on": [
+        "BLK-0001"
+      ],
       "acceptance_criteria": [
         "eas.json exists with a preview/build profile",
         "android.package and ios.bundleIdentifier set in app.json",
@@ -71,6 +80,111 @@
           "note": "Awaiting founder identity decision — see BLK-0001"
         }
       ]
+    },
+    {
+      "id": "TASK-0004",
+      "title": "Settings screen — profile, consent, delete account",
+      "description": "Users 1 and 2. The backend has DELETE /auth/account and consent endpoints; the web client has no settings screen at all, so neither is reachable. Add a Settings screen behind the existing (unrendered) settings icon: profile, POPIA consent toggle, delete account with password confirmation, sign out.",
+      "owner": "dev-web",
+      "branch": "agent/dev-web",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Settings is reachable from the header on every tab",
+        "Shows the signed-in email and name",
+        "Consent toggle reads GET /analytics/consent and writes POST /analytics/consent",
+        "Delete account requires the current password and calls DELETE /auth/account",
+        "After deletion the session ends and the login screen is shown",
+        "Delete confirmation states plainly what happens to the data (POPIA)",
+        "Must not regress: existing tabs, sign-out, refresh tokens",
+        "tsc clean and production build succeeds"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T11:35:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0005",
+      "title": "Module refresh bug — added module does not update the dashboard",
+      "description": "User 5: slow/stale update after adding a module. reloadModules() updates the module list but dependents (dashboard counts, in-flight material search) keep stale data. No pending state on the add control.",
+      "owner": "dev-web",
+      "branch": "agent/dev-web",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Adding a module updates the dashboard count without a manual refresh",
+        "A failed add does NOT insert the module into the list",
+        "The add control shows a pending state while the request is in flight",
+        "Success is confirmed explicitly, not implied",
+        "Must not regress: planner and materials still receive the new module"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T11:35:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0006",
+      "title": "Fonts do not load on slow/blocked connections",
+      "description": "User 3. index.css loads Manrope/DM Sans from Google Fonts over the network; on a slow or blocked connection the app renders in a generic fallback and looks broken. Prefer self-hosting; acceptable minimum is a robust fallback stack.",
+      "owner": "dev-web",
+      "branch": "agent/dev-web",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "Load the app with the fonts blocked in devtools: text remains legible and the layout does not shift",
+        "No external font request on page load (preferred), or a documented fallback stack",
+        "Typography on a normal connection is unchanged"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T11:35:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0007",
+      "title": "First-run guidance for new students",
+      "description": "User 6: instructions complicated for first time users. Text only, no tour, no new screens.",
+      "owner": "uiux",
+      "branch": "agent/uiux",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "acceptance_criteria": [
+        "When the student has no modules, the empty dashboard states what to do first",
+        "One or two sentences, copy voice rules applied",
+        "No new screens, no walkthrough"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T11:35:00+02:00",
+      "history": []
+    },
+    {
+      "id": "TASK-0008",
+      "title": "Validation and error-message polish",
+      "description": "Users 7 and 8. Partial already: describeError branches on status; forms have required attributes. Remaining: module code format hint and upper-casing, and signup password rules shown before submit.",
+      "owner": "dev-web",
+      "branch": "agent/dev-web",
+      "status": "todo",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-0004",
+        "TASK-0005"
+      ],
+      "acceptance_criteria": [
+        "Module code field shows a format hint and uppercases on blur",
+        "Signup states the password rules before submit, not only after failure",
+        "No change to any working error path"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T11:35:00+02:00",
+      "history": []
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-17T19:45:00+02:00",
+  "updated_at": "2026-10-21T11:50:00+02:00",
   "owner": "any — append your own handoffs; never edit someone else's",
   "handoffs": [
     {
@@ -21,6 +21,64 @@
       "pr": null,
       "known_limitations": [
         "OverviewTab and MaterialsTab will remain inconsistent until a follow-up task"
+      ]
+    },
+    {
+      "id": "HO-0002",
+      "task_id": "TASK-0004",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:35:00+02:00",
+      "summary": "Build the Settings screen. Two of eleven users could not reach settings or delete their account; the backend endpoint exists and is unreachable from the UI. Highest-value fix before Sunday.",
+      "evidence": [
+        "app/api/v1/auth.py:318 DELETE /auth/account exists with password re-auth",
+        "frontend/src/App.tsx:18 tabs have no Settings; frontend/src/components has no Settings component",
+        "frontend/src/components/Icon.tsx:9 a settings icon exists but is never rendered",
+        "conversation/user_feedback_triage.md sections 1 and 2"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": [
+        "This is POPIA-relevant: right-to-delete exists in the API and is unreachable in the product"
+      ]
+    },
+    {
+      "id": "HO-0003",
+      "task_id": "TASK-0005",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:35:00+02:00",
+      "summary": "Fix the stale module update. reloadModules() runs but the dashboard keeps old counts and the add control has no pending state, so a slow request looks like nothing happened.",
+      "evidence": [
+        "frontend/src/App.tsx:116 reloadModules(); :291,:304 onModulesChanged wired to Planner and Materials only",
+        "User 5: slow updating the module that were added"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": []
+    },
+    {
+      "id": "HO-0004",
+      "task_id": "TASK-0004",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:50:00+02:00",
+      "summary": "Settings screen spec is ready: conversation/spec_task_0004_settings.md. This is user 1 + user 2, the highest-value fix before Sunday. Build it exactly as specified and stop there.",
+      "evidence": [
+        "Frontend 200 in 0.3s at https://uni-companion.scrapymog.workers.dev",
+        "API health 200 in 2.3s",
+        "CORS from the scrapymog origin returns 200 with the correct allow-origin header",
+        "Live bundle embeds https://uni-companion.onrender.com",
+        "DELETE /auth/account at auth.py:318; consent GET/POST at analytics.py:93,119",
+        "Settings icon exists at Icon.tsx:9 but is never rendered"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": [
+        "The mobile app already has a settings tab; this task is the WEB client only"
       ]
     }
   ]

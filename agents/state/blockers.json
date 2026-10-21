@@ -40,6 +40,26 @@
       "answered_at": null,
       "note_2026_10_21": "CORRECTION: email is NOT a requirement. An Expo account needs an email only to register - using an existing free address (Gmail etc.) costs nothing. The email was never the blocker; the real blocker is (a) no Expo account/login exists, and (b) no free iOS path. Also found: no Java, Android SDK or Gradle on this machine, so a LOCAL apk build would need a large install before EAS can be avoided.",
       "revised_question": "Confirm the app identifier za.co.varsitycompanion, and decide: FNB likely requires the iOS app too (the original ask). iOS builds cannot be produced without an Apple Developer account (~R1300/yr) or a Mac. If Android-only APK is acceptable for the FNB submission, that can be built with a free Expo account."
+    },
+    {
+      "id": "BLK-0003",
+      "task_id": "TASK-0009",
+      "raised_by": "tech-lead",
+      "at": "2026-10-21T14:15:00+02:00",
+      "question": "The production materials library only contains data for COS132 (15 rows). Every other module returns 0 results. To populate it I need the production DATABASE_URL (the Neon Postgres connection string) from the Render dashboard, or the founder runs the ingest script with it.",
+      "why_blocked": "scripts/ingest_real_materials.py connects through the app's SessionLocal, which reads DATABASE_URL. The local .env points at the local Docker database (127.0.0.1:5544/varsity_companion_dev), not production. The production value lives only in Render's environment variables and has never been copied here. I will not ask for it in chat - it is a credential.",
+      "context": "This is user 11's complaint ('the manual labour of having to add files and all, that is a lot'). It is NOT a code defect: search works, the ingest script is dynamic and already handles any module code. Measured against production with a real session: COS132 -> 15 materials; COS101, COS110, CSC301, MAM201, EKN110, FNB152, WTW165 -> 0 each. A judge who types their own module code gets an empty screen and concludes they must paste everything by hand.",
+      "options": [
+        "Founder runs, on a machine with the production DATABASE_URL set: venv/bin/python scripts/ingest_real_materials.py  (idempotent; upserts)",
+        "Founder copies DATABASE_URL from Render into the local .env, then I run it",
+        "Leave it and pre-ingest only after the hackathon dashboard work is done"
+      ],
+      "recommendation": "Option 1 or 2 before Friday. It is the single highest-impact fix for the demo: it turns 'Find Materials' from empty into useful for any module a judge types.",
+      "status": "reduced",
+      "answered_by": null,
+      "answer": "PARTLY UNBLOCKED, tested live. The per-module ingest endpoint works: POST /materials/modules/CSC301/ingest returned inserted=8 in 62s, and CSC301 then returned 5 searchable materials (PDFs + articles). The student-facing 'Find resources for this module' button calls exactly this. So user 11 does NOT need the production DB credential: a student can populate any module themselves. What remains blocked is only the OPTIONAL bulk pre-seed via scripts/ingest_real_materials.py for common module codes.",
+      "answered_at": null,
+      "remaining": "Optional: bulk pre-seed common SA module codes before the demo so a judge's first search is never empty. Requires the production DATABASE_URL (founder)."
     }
   ]
 }

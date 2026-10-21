@@ -215,6 +215,26 @@
       "created_by": "tech-lead",
       "created_at": "2026-10-21T11:35:00+02:00",
       "history": []
+    },
+    {
+      "id": "TASK-0009",
+      "title": "Populate the production materials library (user 11)",
+      "description": "Production study_materials has data only for COS132 (15 rows). Every other module returns 0 results in Find Materials, so students fall back to pasting files by hand. Not a code defect: search and the dynamic ingest script both work. Blocked on BLK-0003.",
+      "owner": "devops",
+      "branch": "main",
+      "status": "blocked",
+      "priority": "P0",
+      "depends_on": [
+        "BLK-0003"
+      ],
+      "acceptance_criteria": [
+        "A freshly created module in a common UCT/SA course returns at least 5 materials",
+        "ingest_real_materials.py run against production completes without error"
+      ],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T14:15:00+02:00",
+      "history": []
     }
   ]
 }

@@ -1,5 +1,65 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
+
+/* ===========================================================================
+   FONTS - self-hosted, no network request.
+
+   WHY THIS IS NOT A GOOGLE FONTS @import ANY MORE
+   -----------------------------------------------
+   It used to be:
+       @import url("https://fonts.googleapis.com/css2?...");
+
+   That makes every page load reach out to Google before the text can be drawn
+   in the intended typeface. On a slow or blocked connection - which is the
+   normal case on campus wifi, and the exact situation this product exists for -
+   the request fails or stalls and the app renders in the browser's default
+   serif. Measured before this change: with fonts blocked, Manrope measured the
+   same width as `serif`, i.e. the font was simply absent. A serif heading on a
+   dark UI reads as broken, which is what user 3 reported.
+
+   The two files are the latin subsets of variable fonts, which is why there is
+   ONE file per family and not one per weight: the weight is selected at render
+   time from the same file. 61KB total, served from our own origin, cached by
+   the browser and the CDN, and it works offline.
+
+   `font-display: swap` still applies, so if a file is somehow unavailable the
+   text appears immediately in the fallback rather than staying invisible.
+
+   LICENCES: both families are SIL Open Font License 1.1, which permits
+   self-hosting and redistribution. See src/assets/fonts/LICENSE.txt.
+   =========================================================================== */
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  /* The variable font covers 400-700; declaring the range lets the browser
+     interpolate, instead of faking bold by smearing the outline. */
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/dm-sans-var.woff2") format("woff2-variations"),
+       url("./assets/fonts/dm-sans-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("./assets/fonts/manrope-var.woff2") format("woff2-variations"),
+       url("./assets/fonts/manrope-var.woff2") format("woff2");
+}
+
+/* Fallback stacks.
+   `-apple-system`/`Segoe UI`/`Roboto` are the platform UI faces: if the webfont
+   ever fails, these are metrically much closer to DM Sans and Manrope than the
+   browser default serif, so the layout does not visibly reflow. This is the
+   "acceptable minimum" half of the acceptance criteria, kept even though the
+   self-hosting means it should never be needed. */
+:root {
+  --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
 
 @theme {
   /* Surfaces — warm dark, not pitch-black. Pure #000 with pure #FFF text
@@ -37,7 +97,7 @@
 }
 
 :root {
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-body);
   color: var(--color-fg);
   background: var(--color-bg);
   font-synthesis: none;
@@ -71,7 +131,7 @@ button {
 }
 
 .font-display {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-display);
 }
 
 .logo-mark {

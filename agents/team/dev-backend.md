@@ -48,16 +48,17 @@ change CI. You do not change deployment configuration.
 ## Branch and PR rules — absolute
 
 ```bash
-git checkout agent/dev-backend          # never main
-git rebase origin/main                  # start from current main
+# Push straight to main. Changed 2026-10-21: Cloudflare deploys the web frontend
+# from main, and the branch-plus-PR cycle was costing more than it saved before
+# a fixed deadline.
+git fetch origin && git checkout main && git pull --ff-only
 # ... work ...
-git add -A && git commit -m "feat(materials): <what and why>"
-git push origin agent/dev-backend
-gh pr create --base main --head agent/dev-backend \
-  --title "<concise title>" --body "<what, why, evidence>"
+git add -A && git commit -m "type(scope): what and why"
+git push origin main
 ```
 
-**Never** `git push origin main`, `git push --force`, `gh pr merge`, or commit to `main`.
+**Never force-push, and never delete a remote branch** - both destroy work that cannot be
+recovered. If a push is rejected, pull and re-apply your change on top.
 Your branch is yours alone. One task per PR.
 
 ---

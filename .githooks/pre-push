@@ -1,16 +1,22 @@
 #!/bin/sh
 #
-# pre-push — refuses to push to the protected branch and refuses force-push.
+# pre-push — refuses a force-push and refuses a remote branch delete.
 #
-# GitHub cannot enforce this on a private repo without Pro, so this is the local
-# guard. It is checked here rather than only in pre-commit because a commit can be
-# made on a branch and pushed elsewhere, and because `git push --force` is the
-# other destructive mistake an agent makes by muscle memory.
+# WHAT CHANGED AND WHY
+# --------------------
+# This hook used to refuse any push to `main`. On 2026-10-21 the founder
+# reversed that rule: agents push straight to `main`, because Cloudflare deploys
+# the web frontend from `main` and the branch-plus-PR cycle was costing more than
+# it saved before a fixed deadline.
+#
+# Pushing to `main` is now allowed. What is STILL refused, because both destroy
+# work that cannot be recovered from the branch itself:
+#
+#   1. a force-push (rewriting or discarding history)
+#   2. deleting a remote branch
 #
 # The remote refs are provided on stdin as:
 #   <local ref> SP <local sha> SP <remote ref> SP <remote sha> LF
-
-PROTECTED_REF="refs/heads/main"
 
 # A zero SHA in the remote slot means the ref does not exist yet (a create).
 ZERO="0000000000000000000000000000000000000000"
@@ -20,26 +26,20 @@ blocked=0
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -z "$remote_ref" ] && continue
 
-  # 1. Never push to main, by any spelling.
-  if [ "$remote_ref" = "$PROTECTED_REF" ]; then
-    echo "" >&2
-    echo "  BLOCKED: refusing to push to 'main'." >&2
-    echo "  Push to your agent branch and open a pull request instead." >&2
-    blocked=1
-  fi
-
-  # 2. Never force-push: an existing remote ref that is not an ancestor of what
-  #    we are sending means history would be rewritten or discarded.
+  # 1. Never force-push: an existing remote ref that is not an ancestor of what
+  #    we are sending means history would be rewritten or discarded. On `main`
+  #    that would destroy other agents' work with no way to recover it.
   if [ "$remote_sha" != "$ZERO" ] && [ "$local_sha" != "$ZERO" ]; then
     if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
       echo "" >&2
       echo "  BLOCKED: this push would rewrite history on $remote_ref." >&2
-      echo "  No force-pushing. Rebase onto the remote and push normally." >&2
+      echo "  No force-pushing, including on main." >&2
+      echo "  Pull, then re-apply your change on top." >&2
       blocked=1
     fi
   fi
 
-  # 3. Never delete a branch on the remote.
+  # 2. Never delete a branch on the remote.
   if [ "$local_sha" = "$ZERO" ]; then
     echo "" >&2
     echo "  BLOCKED: refusing to delete remote branch $remote_ref." >&2

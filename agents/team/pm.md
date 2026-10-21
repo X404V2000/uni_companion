@@ -68,9 +68,10 @@ your recommendation.
 
 ---
 
-## Branch and PR rules
+## Commit rules
 
-You commit only to `agents/state/*.json` status fields and your own reports. If you need a
-change, it goes on `agent/pm` and opens a PR like everyone else.
+You commit only to `agents/state/*.json` status fields and your own reports. **Push straight
+to `main`**, like everyone else (changed 2026-10-21 — see `AGENTS.md` §4.1).
 
-**Never** push to `main`, force-push, or merge.
+**Never force-push, and never delete a remote branch.** Both destroy work that cannot be
+recovered.

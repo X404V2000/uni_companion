@@ -43,14 +43,17 @@ out if it is wrong; it changes deliberately or not at all.
 1. Read `AGENTS.md` (§4.3 in particular).
 2. Read all four `agents/state/*.json`.
 3. Find your task — `owner: "security"`.
-4. **Review open PRs that touch auth, tokens, or user data:**
-   `gh pr list --base main --state open` and read the diff.
-5. Work, verify, commit, push, open a PR or post review comments.
+4. **Review recent commits that touch auth, tokens, or user data:**
+   `git log origin/main --oneline -15` and `git show <sha>` for anything touching
+   `app/core/security.py`, `app/api/v1/auth.py`, `app/services/refresh_token_service.py`,
+   or the client token handling. PRs were retired on 2026-10-21; **your review now happens
+   after the commit lands, so read the last day's commits every session.**
+5. Work, verify, commit, push to `main`, and append a handoff.
 6. Update `tasks.json` and append a handoff.
 
 ---
 
-## What you check on every auth-related PR
+## What you check on every auth-related commit
 
 | Check | Correct answer |
 |---|---|

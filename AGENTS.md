@@ -67,23 +67,38 @@ is stale — trust the tree.
 
 ### 4.1 Git and review
 
-1. **Never commit to `main`.** Never force-push. Never merge a PR.
-2. Work only on **your own branch**: `agent/<your-name>`. One branch per employee, permanently.
-3. Push with `gh`/`git` and **open a pull request into `main`**. The founder reviews and merges.
-   You do not merge.
-4. **CI only runs on PRs into `main`** (`.github/workflows/ci.yml` triggers on
-   `push`/`pull_request` to `main` and `develop`). Your branch alone does not get CI — the PR does.
-   Do not report work as verified until CI on the PR is green.
-5. **One task per PR.** A PR that does three things cannot be reviewed or reverted cleanly.
+**Changed 2026-10-21 by founder decision: agents and the Tech Lead push directly to
+`main`.** No branches, no pull requests. This was chosen because Cloudflare's GitHub
+integration deploys from `main`, and the review cycle was costing more than it saved in the
+run-up to a fixed deadline.
+
+1. **Commit and push straight to `main`.** Work on a checked-out, up-to-date `main`:
+   ```bash
+   git fetch origin && git checkout main && git pull --ff-only
+   # ... work ...
+   git add -A && git commit -m "type(scope): what and why"
+   git push origin main
+   ```
+2. **Still never force-push.** Rewriting shared history on `main` would destroy other
+   work. If a push is rejected, pull and re-apply your change — do not force.
+3. **One task per commit.** A commit that does three things cannot be reverted cleanly.
+   Verify the tree is clean of unrelated edits before committing.
+4. **CI runs on every push to `main`** (`.github/workflows/ci.yml`). Check it after
+   pushing; a red `main` is now everyone's problem because there is no PR to gate it.
+5. **A push to `main` deploys.** Cloudflare builds and publishes the web frontend from
+   `main` on every push. A broken commit therefore reaches the live site — verify before
+   pushing, not after.
 6. **Enable the local hooks in your clone, once:**
    ```bash
    ./scripts/setup_hooks.sh
    ```
-   They refuse a commit on `main`, a push to `main`, a force-push, and a remote branch delete.
-   This is the only mechanical enforcement that exists: **GitHub branch protection is
-   unavailable on this private repository** (it requires GitHub Pro or a public repo). The hooks
-   are a guard against mistakes, not against a determined actor. `--no-verify` skips them, so
-   the rule still binds you even when the hook does not. See `agents/README.md` §7.
+   They run `ruff` on staged Python, scan for credentials, and refuse a force-push or a
+   remote branch delete. **They no longer block commits to `main`** — that rule was
+   reversed on 2026-10-21. The secret scan and ruff checks still apply.
+   **GitHub branch protection is unavailable on this private repository** (it requires
+   GitHub Pro or a public repo), so these hooks are the only mechanical guard. `--no-verify`
+   skips them, so the rule still binds you even when the hook does not. See
+   `agents/README.md` §7.
 
 ### 4.2 Packages
 

@@ -78,13 +78,16 @@ If you change copy, check it **renders in the space available** on a 390px-wide 
 ## Branch and PR rules — absolute
 
 ```bash
-git checkout agent/uiux           # never main
-git rebase origin/main
-git add -A && git commit -m "design: <what and why>"
-git push origin agent/uiux
-gh pr create --base main --head agent/uiux --title "..." --body "..."
+# Push straight to main. Changed 2026-10-21: Cloudflare deploys the web frontend
+# from main, and the branch-plus-PR cycle was costing more than it saved before
+# a fixed deadline.
+git fetch origin && git checkout main && git pull --ff-only
+# ... work ...
+git add -A && git commit -m "type(scope): what and why"
+git push origin main
 ```
 
-**Never** push to `main`, force-push, or merge. **Never add a colour outside the palette without
+**Never force-push, and never delete a remote branch** - both destroy work that cannot be
+recovered. If a push is rejected, pull and re-apply your change on top.
 the Tech Lead's ruling** — the palette is shared by web and mobile and a new token is a
 decision, not a preference.

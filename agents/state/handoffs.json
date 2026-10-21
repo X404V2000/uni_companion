@@ -22,6 +22,42 @@
       "known_limitations": [
         "OverviewTab and MaterialsTab will remain inconsistent until a follow-up task"
       ]
+    },
+    {
+      "id": "HO-0002",
+      "task_id": "TASK-0004",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:35:00+02:00",
+      "summary": "Build the Settings screen. Two of eleven users could not reach settings or delete their account; the backend endpoint exists and is unreachable from the UI. Highest-value fix before Sunday.",
+      "evidence": [
+        "app/api/v1/auth.py:318 DELETE /auth/account exists with password re-auth",
+        "frontend/src/App.tsx:18 tabs have no Settings; frontend/src/components has no Settings component",
+        "frontend/src/components/Icon.tsx:9 a settings icon exists but is never rendered",
+        "conversation/user_feedback_triage.md sections 1 and 2"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": [
+        "This is POPIA-relevant: right-to-delete exists in the API and is unreachable in the product"
+      ]
+    },
+    {
+      "id": "HO-0003",
+      "task_id": "TASK-0005",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:35:00+02:00",
+      "summary": "Fix the stale module update. reloadModules() runs but the dashboard keeps old counts and the add control has no pending state, so a slow request looks like nothing happened.",
+      "evidence": [
+        "frontend/src/App.tsx:116 reloadModules(); :291,:304 onModulesChanged wired to Planner and Materials only",
+        "User 5: slow updating the module that were added"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": []
     }
   ]
 }

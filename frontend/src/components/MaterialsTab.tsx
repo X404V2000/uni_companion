@@ -193,13 +193,22 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
 
             {/* The button that actually fills the catalog. Placed immediately under
                 the module selector because it acts on the selected module, and a
-                student should not have to hunt for it. */}
+                student should not have to hunt for it.
+
+                HONEST TIMING (measured 2026-10-21 against production): a fetch took
+                62 seconds and returned 8 resources. The old label said "a few
+                seconds", so a student who waited 20s and saw nothing moving concluded
+                it was broken and went back to pasting files by hand - which is
+                user 11's complaint. Telling them the real range is the difference
+                between waiting and giving up. */}
             <button
               onClick={() => void fetchResources()}
               disabled={fetching}
               className="w-full rounded-xl border border-[var(--color-teal)] px-4 py-2.5 text-[11px] font-extrabold text-[var(--color-teal)] transition disabled:opacity-50"
             >
-              {fetching ? "Finding resources… this takes a few seconds" : "Find resources for this module"}
+              {fetching
+                ? "Searching arXiv, Wikipedia and Open Library… up to a minute"
+                : "Find resources for this module"}
             </button>
 
             {fetchNote && (
@@ -336,10 +345,20 @@ function MaterialsTab({ notify, moduleList }: { notify: (msg: string) => void; m
                 /* (3) THE CATALOG IS EMPTY. Nothing is wrong with the student's input;
                    the module simply has no resources stored yet, and fetching is the
                    action that changes that. This is also where a student who has never
-                   fetched anything discovers that fetching exists. */
+                   fetched anything discovers that fetching exists.
+
+                   REWORDED 2026-10-21 (user 11). "No materials for this module yet."
+                   states a fact and leaves the student to work out what to do, which is
+                   how they ended up pasting files by hand. Say what the button does and
+                   how long it takes, in the student's terms. */
                 <>
-                  <p className="text-xs text-[var(--color-fg-muted)]">
-                    No materials for this module yet.
+                  <p className="text-xs font-bold text-[var(--color-fg)]">
+                    Nothing here for {moduleCode || "this module"} yet
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+                    You do not need to upload anything. This searches open sources —
+                    arXiv preprints, Wikipedia and Open Library — and adds what it finds
+                    to this module. Takes up to a minute.
                   </p>
                   <button
                     onClick={() => void fetchResources()}

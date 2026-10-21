@@ -260,6 +260,25 @@
       "created_by": "tech-lead",
       "created_at": "2026-10-21T14:15:00+02:00",
       "history": []
+    },
+    {
+      "id": "TASK-0010",
+      "title": "Schedule the POPIA purge — deleted accounts are never erased",
+      "description": "DELETE /auth/account soft-deletes (is_active=False, deleted_at set, password scrubbed) but the row keeps the student's email and full name. purge_expired_users() erases rows past POPIA_RETENTION_DAYS=30 and is tested, but its ONLY caller is the manual admin endpoint POST /admin/purge-deleted-users. There is no scheduler or cron anywhere in the codebase, so the 30-day erasure the privacy policy promises never happens unless a human calls the API.",
+      "acceptance_criteria": [
+        "An account soft-deleted more than 30 days ago is physically gone without manual action",
+        "The purge runs automatically on service start (Render free tier has no cron)",
+        "A test proves the trigger actually invokes the purge, not just that purge works"
+      ],
+      "owner": "dev-backend",
+      "branch": "main",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "pr": null,
+      "created_by": "tech-lead",
+      "created_at": "2026-10-21T14:35:00+02:00",
+      "history": []
     }
   ]
 }

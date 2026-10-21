@@ -113,6 +113,18 @@
         "all briefs",
         ".githooks"
       ]
+    },
+    {
+      "id": "DEC-0008",
+      "title": "Materials: favour coverage and quality of sources over adding ML",
+      "decided_by": "tech-lead (recommendation to founder)",
+      "at": "2026-10-21T14:40:00+02:00",
+      "decision": "Before Friday's features, the materials pipeline should be widened at the SOURCE layer (more open APIs, better query construction) rather than given a machine-learning ranking model.",
+      "reasoning": "Measured: the existing pipeline already fetches 8 resources for an arbitrary module in 62s and returns 5 searchable, type-tagged materials. The bottleneck is coverage (only COS132 was seeded) and precision of the derived search topics, not ranking. An ML reranker cannot invent relevant results that were never fetched; more/better sources can. Also: Render free tier has ~1 vCPU and no GPU, and no paid API budget, so any model must be small, local and precomputed - which rules out a meaningful live reranker for this deadline.",
+      "affects": [
+        "TASK-0009",
+        "materials roadmap"
+      ]
     }
   ]
 }

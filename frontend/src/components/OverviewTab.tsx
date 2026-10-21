@@ -218,6 +218,56 @@ function OverviewTab({
 
   return (
     <div className="space-y-4">
+      {/* FIRST-RUN GUIDE (user 6: "instructions are a bit complicated for first
+          time users").
+
+          Shown ONLY to a student with no modules - the moment the app is at its
+          most confusing, because every deadline list is empty and every action
+          looks optional. Three numbered steps, each of which does something when
+          tapped, rather than a paragraph of explanation.
+
+          It disappears for good the moment the first module exists, so it is
+          never clutter for a returning student. */}
+      {!loading && moduleList.length === 0 && (
+        <div className="rounded-[20px] border border-[var(--color-teal)]/40 bg-[var(--color-teal)]/10 p-5">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--color-teal)]">
+            Start here
+          </p>
+          <h2 className="mt-1 font-display text-base font-extrabold text-[var(--color-fg)]">
+            Three steps, about a minute
+          </h2>
+          <ol className="mt-3 space-y-3">
+            <li className="flex gap-3">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">1</span>
+              <span className="text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+                <span className="font-bold text-[var(--color-fg)]">Add your modules.</span>{" "}
+                Every deadline, summary and material belongs to one.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">2</span>
+              <span className="text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+                <span className="font-bold text-[var(--color-fg)]">Add a deadline.</span>{" "}
+                The date is the only field that matters; the rest is optional.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">3</span>
+              <span className="text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+                <span className="font-bold text-[var(--color-fg)]">Find materials.</span>{" "}
+                No uploading — one button searches open sources for you.
+              </span>
+            </li>
+          </ol>
+          <button
+            onClick={() => setShowManageModules(true)}
+            className="mt-4 w-full rounded-xl bg-[var(--color-teal)] py-2.5 text-[11px] font-extrabold text-[var(--color-bg)]"
+          >
+            Add my first module
+          </button>
+        </div>
+      )}
+
       <div className="rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -338,7 +388,12 @@ function OverviewTab({
             return (
               <button
                 key={module.id}
-                onClick={() => notify(`${module.code} selected`)}
+                /* WAS: onClick={() => notify(`${module.code} selected`)}
+                   That showed a toast and went nowhere. A first-time student taps
+                   their module expecting it to open, nothing happens, and the app
+                   reads as broken - part of user 6's "instructions are a bit
+                   complicated". The useful destination is that module's materials. */
+                onClick={() => onTabChange("Find Materials")}
                 className="module-card group flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left shadow-[0_4px_16px_rgba(0,0,0,0.30)] transition active:-translate-y-0.5"
                 style={{ "--module-color": accent.color } as CSSProperties}
               >

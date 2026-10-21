@@ -71,6 +71,12 @@ TOPIC_COUNT = 6
 ARXIV_PER_MODULE = 3
 BOOKS_PER_MODULE = 2
 MAX_VIDEOS = 3
+# New sources (2026-10-21). Kept modest on purpose: the ingest endpoint is
+# synchronous and every extra result is another URL to validate by fetching it.
+# Measured budget - the four original sources took ~62s, so adding two more
+# collectors with small limits keeps a single fetch inside a minute or so.
+PAPERS_PER_MODULE = 4
+TEXTBOOKS_PER_MODULE = 2
 
 # ALLOW-LISTED source hosts. A request is only ever made to one of these, and
 # the URL is always constructed here — never taken from user input.
@@ -80,6 +86,13 @@ ALLOWED_SOURCE_HOSTS = frozenset(
         "export.arxiv.org",
         "openlibrary.org",
         "www.youtube.com",
+        # Added 2026-10-21 to widen coverage. Both are OFFICIAL JSON APIs that
+        # publish their terms for programmatic use - Crossref is the DOI registry
+        # (academic papers across every field) and Open Textbook Library is a
+        # catalogue of peer-reviewed, openly-licensed university textbooks. Neither
+        # is scraped: both return structured JSON we parse.
+        "api.crossref.org",
+        "open.umn.edu",
     }
 )
 
@@ -171,6 +184,108 @@ def _fetch(url: str) -> bytes | None:
                 continue
             return None
     return None
+
+
+# ---------------------------------------------------------------------------
+# Relevance scoring - the "smart" layer, kept transparent on purpose
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS
+# ---------------
+# Without it, adding sources made the library WORSE, not better. Measured on
+# 2026-10-21: searching Open Textbook Library for "mathematics" returned
+# "Accounting in the Finance World", "Communication for Business Success" and
+# "eMarketing". The APIs rank by their own relevance, which is not our question.
+# A student who gets three finance books for a maths module stops trusting the
+# screen entirely.
+#
+# WHY NOT A MACHINE-LEARNING MODEL
+# --------------------------------
+# The server is a free Render instance: about 1 vCPU, no GPU, no budget for a
+# hosted model. A reranker small enough to run there would add latency to a
+# request that already takes ~60s, and could not be evaluated honestly before
+# the deadline. This scoring is ~40 lines, deterministic, unit-testable, and a
+# reader can predict exactly why a result was kept or dropped. If a real
+# embedding model is added later, this is the seam it replaces.
+#
+# WHAT IT MEASURES
+# ----------------
+# Topic coverage: how many of the module's derived topics appear in a result's
+# title or description. Each topic is checked as a whole, so a topic scores only
+# when most of its significant words are present - the single word "business"
+# cannot carry "business communication". Stop-words are removed so "of", "and"
+# and "for" cannot match a title like "Guide for the Busy Student".
+
+_STOPWORDS = frozenset(
+    """
+    a an and are as at be by for from has have in into is it its of on or that
+    the their there these this to was were will with your you we our
+    introduction to programming the book textbook edition volume
+    """.split()
+)
+
+# A candidate must reach this to be stored. Tuned against the measured bad
+# results: a single shared generic word ("business", "college") does not reach it,
+# while a real topic match ("calculus" in a maths module) does.
+MIN_RELEVANCE = 1.0
+
+
+def _terms(text: str) -> set[str]:
+    """Lower-case word set, stop-words removed, length >= 3."""
+    words = re.findall(r"[a-z]{3,}", text.lower())
+    return {w for w in words if w not in _STOPWORDS}
+
+
+def score_candidate(candidate: Candidate, topics: list[str], module_name: str) -> float:
+    """Return a relevance score >= 0. Deterministic and explainable.
+
+    `topics` are the module's derived topics. `module_name` is included because a
+    topic derived from an AI can be wrong, but the module's own name is what the
+    student typed.
+
+    Scoring, in plain terms:
+      +1.0 per module topic whose significant words all appear in the result,
+      +0.5 per topic where at least half of its significant words appear,
+      +0.3 per module-name word that appears.
+    """
+    haystack = _terms(candidate.title + " " + candidate.description)
+    if not haystack:
+        return 0.0
+
+    score = 0.0
+    for topic in topics:
+        wanted = _terms(topic)
+        if not wanted:
+            continue
+        hits = len(wanted & haystack)
+        if hits == len(wanted):
+            score += 1.0
+        elif hits * 2 >= len(wanted):
+            score += 0.5
+
+    name_words = _terms(module_name)
+    if name_words:
+        score += 0.3 * len(name_words & haystack)
+
+    return score
+
+
+def rank_candidates(
+    candidates: list[Candidate], topics: list[str], module_name: str
+) -> list[Candidate]:
+    """Drop off-topic results and order the rest by relevance, best first.
+
+    Ordering is stable for equal scores so the result is reproducible - two runs
+    over the same module produce the same library in the same order.
+    """
+
+    scored = [
+        (score_candidate(c, topics, module_name), index, c)
+        for index, c in enumerate(candidates)
+    ]
+    kept = [(s, i, c) for (s, i, c) in scored if s >= MIN_RELEVANCE]
+    kept.sort(key=lambda item: (-item[0], item[1]))
+    return [c for (_s, _i, c) in kept]
 
 
 def _is_alive(url: str) -> bool:
@@ -409,6 +524,146 @@ def _collect_openlibrary(code: str, query: str) -> list[Candidate]:
     return out
 
 
+def _collect_crossref(code: str, query: str) -> list[Candidate]:
+    """Academic papers via the Crossref DOI registry.
+
+    WHY THIS SOURCE
+    ---------------
+    arXiv only covers physics, maths and computer science. A commerce, law or
+    medicine module got nothing from it. Crossref indexes DOIs from every
+    publisher in every field, so it is the source that makes the pipeline work
+    for a degree that is not a CS degree - which is most of the students this
+    product serves.
+
+    LEGALITY
+    --------
+    Crossref runs a public JSON API and asks only for a polite User-Agent with a
+    contact address (already set globally in _fetch). We do not scrape publisher
+    pages and we do not bypass paywalls: the URL stored is the DOI resolver link,
+    which may point at a paid article. That is deliberate and matches how a
+    library catalogue behaves - it tells the student the paper exists and where
+    it lives. Students with institutional access get straight through.
+    """
+    body = _fetch(
+        "https://api.crossref.org/works?"
+        f"query={urllib.parse.quote(query)}"
+        f"&rows={PAPERS_PER_MODULE}"
+        "&select=DOI,title,URL,type,author,issued,container-title"
+        "&sort=relevance"
+    )
+    if not body:
+        return []
+    try:
+        items = json.loads(body).get("message", {}).get("items", [])
+    except Exception:
+        return []
+
+    out: list[Candidate] = []
+    for item in items:
+        doi = item.get("DOI")
+        titles = item.get("title") or []
+        title = titles[0] if titles else None
+        if not doi or not title:
+            continue
+
+        # Crossref `type` is finer-grained than our four material types.
+        kind = str(item.get("type") or "").lower()
+        if kind in {"proceedings-article", "book-chapter", "posted-content"}:
+            resource_type = "PDF"
+        else:
+            resource_type = "JOURNAL"
+
+        year = None
+        issued = item.get("issued", {}).get("date-parts") or []
+        if issued and issued[0]:
+            year = issued[0][0]
+
+        authors = ", ".join(
+            f"{a.get('given', '')} {a.get('family', '')}".strip()
+            for a in (item.get("author") or [])[:3]
+            if a.get("family") or a.get("given")
+        )
+        venue = (item.get("container-title") or [None])[0]
+
+        details = [d for d in (authors or None, venue, str(year) if year else None) if d]
+        out.append(
+            Candidate(
+                module_code=code,
+                resource_type=resource_type,
+                title=str(title)[:200],
+                # doi.org resolves and is stable forever; Crossref's own URL field
+                # is sometimes the publisher landing page, which rots.
+                url=f"https://doi.org/{doi}",
+                description=(
+                    (" · ".join(details) if details else "Academic paper")
+                    + " (Source: Crossref)"
+                ),
+            )
+        )
+    return out
+
+
+def _collect_open_textbooks(code: str, query: str) -> list[Candidate]:
+    """Peer-reviewed, openly-licensed university textbooks.
+
+    WHY THIS SOURCE
+    ---------------
+    Open Library returns whatever book matches the words, including books that
+    are not free and not relevant. Open Textbook Library is curated: every entry
+    has been reviewed by a university and carries an open licence, which is
+    exactly what a student on no budget can actually read. For a module with no
+    materials, a free reviewed textbook is the single most useful result.
+
+    The API returns JSON at /opentextbooks/textbooks.json - no HTML scraping.
+    """
+    body = _fetch(
+        "https://open.umn.edu/opentextbooks/textbooks.json?"
+        f"term={urllib.parse.quote(query)}&limit={TEXTBOOKS_PER_MODULE}"
+    )
+    if not body:
+        return []
+    try:
+        books = json.loads(body).get("data", [])
+    except Exception:
+        return []
+
+    out: list[Candidate] = []
+    for book in books:
+        title, url = book.get("title"), book.get("url")
+        if not title or not url:
+            continue
+        # The catalogue URL is the only thing we are willing to store; a book's
+        # download link can change per edition.
+        if urllib.parse.urlparse(url).hostname not in ALLOWED_SOURCE_HOSTS:
+            continue
+
+        bits = []
+        contributors = [
+            str(c.get("name", "")).strip()
+            for c in (book.get("contributors") or [])
+            if c.get("name")
+        ]
+        if contributors:
+            bits.append(", ".join(contributors[:3]))
+        if book.get("copyright_year"):
+            bits.append(str(book["copyright_year"]))
+        if book.get("license"):
+            bits.append(f"{book['license']} licence")
+        out.append(
+            Candidate(
+                module_code=code,
+                resource_type="PDF",
+                title=str(title)[:200],
+                url=url,
+                description=(
+                    (" · ".join(bits) if bits else "Open textbook")
+                    + " (Source: Open Textbook Library)"
+                ),
+            )
+        )
+    return out
+
+
 def _collect_youtube(code: str, topics: list[str]) -> list[Candidate]:
     """Match videos by TOPIC KEYWORD so an unseen module still gets them."""
     joined = " ".join(topics).lower()
@@ -552,10 +807,32 @@ def ingest_for_module(db: Session, user_id: uuid.UUID, module_code: str) -> dict
     try:
         topics = derive_topics(code, owned.name)
         candidates: list[Candidate] = []
+        # The best single query for the whole module: its derived topics joined.
+        # Used by every source that accepts free text.
+        searchable = " ".join(topics[:3]) or owned.name
         candidates += _collect_wikipedia(code, topics)
-        candidates += _collect_arxiv(code, topics[0] if topics else owned.name)
-        candidates += _collect_openlibrary(code, " ".join(topics[:3]) or owned.name)
+        # WAS topics[0] only. The first derived topic is the broadest one
+        # ("software development lifecycle") and returns the least specific
+        # papers. Two topics widens recall without a second round trip, because
+        # the query is still one arXiv call.
+        arxiv_query = " OR ".join(topics[:2]) if topics else owned.name
+        candidates += _collect_arxiv(code, arxiv_query)
+        candidates += _collect_openlibrary(code, searchable)
+        candidates += _collect_crossref(code, searchable)
+        candidates += _collect_open_textbooks(code, searchable)
         candidates += _collect_youtube(code, topics)
+
+        # RELEVANCE GATE, BEFORE the network validation gate.
+        #
+        # Order matters: ranking first means an irrelevant URL is never fetched at
+        # all. Each _is_alive() call is one HTTP request, so discarding a finance
+        # book from a maths module here saves a round trip as well as a wrong
+        # result. YouTube candidates are exempt: their relevance was already
+        # decided by the curated topic->video mapping, and their descriptions are
+        # just "Source: YouTube", which would score zero against any topic.
+        videos = [c for c in candidates if c.resource_type == "YOUTUBE"]
+        others = [c for c in candidates if c.resource_type != "YOUTUBE"]
+        candidates = rank_candidates(others, topics, owned.name) + videos
 
         inserted = updated = 0
         for c in candidates:

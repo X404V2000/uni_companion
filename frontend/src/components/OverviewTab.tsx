@@ -462,10 +462,14 @@ function OverviewTab({
         <div className="divide-y divide-[var(--color-surface)]">
           {activity.map((item) => {
             const style = ACTIVITY_STYLES[item.event_type] ?? ACTIVITY_FALLBACK;
+            /* WAS a <button> whose onClick only fired a toast.
+               An activity row is a record of something that already happened, not
+               a control. Rendering it as a button told the student "this opens",
+               then did nothing - the same dead end as the module cards. It is now
+               plain text: nothing to click, nothing to disappoint. */
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => notify(style.label)}
                 className="flex w-full items-center gap-3.5 py-3.5 text-left first:pt-0 last:pb-0"
               >
                 <span
@@ -486,7 +490,7 @@ function OverviewTab({
                   <Icon name="clock" className="h-3 w-3" />
                   {ageLabel(item.created_at)}
                 </span>
-              </button>
+              </div>
             );
           })}
 

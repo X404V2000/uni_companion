@@ -26,7 +26,7 @@ honestly or say you don't know" rule in the UI.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Web frontend | `https://uni-companion.21401284.workers.dev` | Cloudflare Workers |
+| Web frontend | `https://uni-companion.scrapymog.workers.dev` | Cloudflare Workers |
 | Backend API | `https://uni-companion.onrender.com` | Render (Docker). **Free tier — keep-warm ping active** |
 | Database | Neon (`eu-west-2`) | Migration head **`0013`** |
 | Mobile | expo-router app in `mobile/` | Expo SDK 57 |

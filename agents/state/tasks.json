@@ -131,7 +131,16 @@
       "pr": null,
       "created_by": "tech-lead",
       "created_at": "2026-10-21T11:35:00+02:00",
-      "history": []
+      "history": [
+        {
+          "at": "2026-10-21T13:35:00+02:00",
+          "by": "tech-lead",
+          "status": "todo",
+          "note": "reproduced against deployed API; reframed from stale-state to latency"
+        }
+      ],
+      "reframe": "DOES NOT REPRODUCE as scoped on 2026-10-21. Adding a module refreshes the dashboard correctly: OverviewTab calls loadDashboard() explicitly from the Manage panel's onChanged handler, and the sheet shows 'Adding...' with the button disabled. Measured: click to visible = 2.06s. The cause of user 5's complaint is backend latency, not stale state: /health alone returns in ~0.96-1.05s on the Render free tier, and a module add involves POST + modules + dashboard + activity.",
+      "recommended_scope": "Perceived speed, not correctness. Options: optimistic insert of the new module row, and parallelising the post-add refetches. Backend cold start is the dominant cost and is a tier limit, not a code defect."
     },
     {
       "id": "TASK-0006",

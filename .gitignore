@@ -239,3 +239,6 @@ conversation/
 # The files remain on disk for local reference but must never be re-committed.
 # This rule is load-bearing: without it, a single `git add -A` re-publishes all 91.
 plan/
+
+# users responses - must be private, vulnarabilities must not be leaked 
+users_responses/

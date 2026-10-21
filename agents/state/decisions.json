@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-17T22:10:00+02:00",
+  "updated_at": "2026-10-21T12:30:00+02:00",
   "owner": "tech-lead",
   "decisions": [
     {
@@ -95,6 +95,23 @@
         "TASK-0003",
         "devops",
         "eas.json build profile"
+      ]
+    },
+    {
+      "id": "DEC-0007",
+      "title": "Push directly to main; PRs retired",
+      "decided_by": "founder",
+      "at": "2026-10-21T12:30:00+02:00",
+      "decision": "Agents and the Tech Lead commit and push straight to main. No branches, no pull requests. Force-push remains forbidden.",
+      "reasoning": "Cloudflare deploys the web frontend from main, and the branch-plus-PR cycle was costing more than it saved in the run-up to a fixed deadline.",
+      "rejected_alternatives": [
+        "Keep PRs and merge manually - slower, and the CI gate was already red so the PR added no safety",
+        "Branch protection - unavailable on a private repo without GitHub Pro"
+      ],
+      "affects": [
+        "AGENTS.md 4.1",
+        "all briefs",
+        ".githooks"
       ]
     }
   ]

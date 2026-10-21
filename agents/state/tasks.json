@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-21T12:20:00+02:00",
+  "updated_at": "2026-10-21T14:25:00+02:00",
   "owner": "tech-lead",
   "tasks": [
     {
@@ -87,7 +87,7 @@
       "description": "Users 1 and 2. The backend has DELETE /auth/account and consent endpoints; the web client has no settings screen at all, so neither is reachable. Add a Settings screen behind the existing (unrendered) settings icon: profile, POPIA consent toggle, delete account with password confirmation, sign out.",
       "owner": "dev-web",
       "branch": "agent/dev-web",
-      "status": "in_review",
+      "status": "done",
       "priority": "P0",
       "depends_on": [],
       "acceptance_criteria": [
@@ -109,6 +109,12 @@
           "by": "dev-web",
           "status": "in_review",
           "note": "PR #3"
+        },
+        {
+          "at": "2026-10-21T14:25:00+02:00",
+          "by": "tech-lead",
+          "status": "done",
+          "note": "verified on main; CI green"
         }
       ]
     },
@@ -165,6 +171,12 @@
           "by": "dev-web",
           "status": "done",
           "note": "self-hosted; 0 external requests; Manrope renders with Google blocked"
+        },
+        {
+          "at": "2026-10-21T14:25:00+02:00",
+          "by": "tech-lead",
+          "status": "done",
+          "note": "verified on main; CI green"
         }
       ]
     },
@@ -174,7 +186,7 @@
       "description": "User 6: instructions complicated for first time users. Text only, no tour, no new screens.",
       "owner": "uiux",
       "branch": "agent/uiux",
-      "status": "in_review",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "acceptance_criteria": [
@@ -191,6 +203,12 @@
           "by": "dev-web",
           "status": "in_review",
           "note": "PR #3"
+        },
+        {
+          "at": "2026-10-21T14:25:00+02:00",
+          "by": "tech-lead",
+          "status": "done",
+          "note": "verified on main; CI green"
         }
       ]
     },
@@ -200,7 +218,7 @@
       "description": "Users 7 and 8. Partial already: describeError branches on status; forms have required attributes. Remaining: module code format hint and upper-casing, and signup password rules shown before submit.",
       "owner": "dev-web",
       "branch": "agent/dev-web",
-      "status": "todo",
+      "status": "done",
       "priority": "P3",
       "depends_on": [
         "TASK-0004",
@@ -214,7 +232,14 @@
       "pr": null,
       "created_by": "tech-lead",
       "created_at": "2026-10-21T11:35:00+02:00",
-      "history": []
+      "history": [
+        {
+          "at": "2026-10-21T14:25:00+02:00",
+          "by": "tech-lead",
+          "status": "done",
+          "note": "verified on main; CI green"
+        }
+      ]
     },
     {
       "id": "TASK-0009",

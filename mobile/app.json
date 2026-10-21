@@ -10,6 +10,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "za.co.varsitycompanion",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1C1814",
         "foregroundImage": "./assets/android-icon-foreground.png",

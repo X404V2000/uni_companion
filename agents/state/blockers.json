@@ -37,7 +37,9 @@
       "status": "open",
       "answered_by": null,
       "answer": null,
-      "answered_at": null
+      "answered_at": null,
+      "note_2026_10_21": "CORRECTION: email is NOT a requirement. An Expo account needs an email only to register - using an existing free address (Gmail etc.) costs nothing. The email was never the blocker; the real blocker is (a) no Expo account/login exists, and (b) no free iOS path. Also found: no Java, Android SDK or Gradle on this machine, so a LOCAL apk build would need a large install before EAS can be avoided.",
+      "revised_question": "Confirm the app identifier za.co.varsitycompanion, and decide: FNB likely requires the iOS app too (the original ask). iOS builds cannot be produced without an Apple Developer account (~R1300/yr) or a Mac. If Android-only APK is acceptable for the FNB submission, that can be built with a free Expo account."
     }
   ]
 }

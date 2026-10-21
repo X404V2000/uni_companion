@@ -28,6 +28,21 @@
 name = "uni-companion"
 compatibility_date = "2026-09-30"
 
+# ⚠️ WHERE THE BUILD HAPPENS - this is why deployments were failing.
+#
+# Cloudflare's GitHub build starts at the REPOSITORY ROOT, where there is no
+# package.json (the app lives in frontend/). With no build command, nothing
+# produced ./dist, so every deployment failed in 0 seconds with nothing to
+# upload - on every branch, including main. The logs are empty because the build
+# never started, not because the build broke.
+#
+# `build` makes the build step explicit so it does not depend on a dashboard
+# setting that can drift or be lost. `cwd` moves it to the directory that
+# actually has the package.
+[build]
+command = "npm ci && npm run build"
+cwd = "."
+
 # Directory produced by `npm run build`, relative to this file.
 [assets]
 directory = "./dist"

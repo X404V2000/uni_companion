@@ -68,6 +68,24 @@ export function describeError(error: unknown): string {
       return "Cannot reach the server. Check your connection and try again.";
     }
     if (error.status === 401) {
+      // ⚠️ 401 IS NOT ALWAYS "SESSION EXPIRED".
+      //
+      // The backend uses 401 in at least three different situations:
+      //   - bad credentials on /auth/login  -> "Invalid email or password."
+      //   - wrong re-auth password on DELETE /auth/account
+      //   - an actually expired access token
+      //
+      // Returning "Your session expired. Please sign in again." for all three told a
+      // student who had simply mistyped their password that their session had expired.
+      // That is false, it sends them hunting for a problem that does not exist, and it
+      // throws away the one sentence the server wrote for them.
+      //
+      // So: if the server supplied a detail, it wins. It is written for a human and it
+      // knows which of the three cases it is. The generic sentence is only for a 401
+      // with nothing to say.
+      if (error.message.trim() && error.message.trim() !== "Unauthorized") {
+        return error.message;
+      }
       return "Your session expired. Please sign in again.";
     }
     if (error.status === 429) {

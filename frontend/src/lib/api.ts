@@ -224,6 +224,112 @@ export function refreshOnce(): Promise<boolean> {
   return refreshInFlight;
 }
 
+/**
+ * Turn a failed response body into a sentence a student can act on.
+ *
+ * THE BUG THIS FIXES (user 7: "in need of helpful error messages")
+ * ---------------------------------------------------------------
+ * FastAPI answers a validation failure with a LIST, not a string:
+ *
+ *   {"detail":[{"type":"string_too_short","loc":["body","code"],
+ *               "msg":"String should have at least 2 characters","input":"A"}]}
+ *
+ * The old code did `String(detail)`, and `String()` on an array of objects gives
+ * "[object Object]". So any field a student mistyped - a one-character module
+ * code, an empty deadline title - displayed literally nothing useful, or the
+ * string "[object Object]" if the array had a single item. That is the single
+ * most common way to make this app fail, and it said nothing.
+ *
+ * Now: validation arrays become one sentence per bad field, naming the field in
+ * the student's language ("Module code") and what was wrong in plain words.
+ */
+function extractDetail(parsed: unknown, status: number): string {
+  if (!parsed || typeof parsed !== "object" || !("detail" in parsed)) {
+    return `HTTP ${status}`;
+  }
+
+  const detail = (parsed as { detail: unknown }).detail;
+
+  // The normal case: the backend wrote a sentence for a human.
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  // FastAPI validation array.
+  if (Array.isArray(detail)) {
+    const sentences = detail
+      .map((item) => describeValidationItem(item))
+      .filter((s): s is string => Boolean(s));
+    if (sentences.length > 0) return sentences.join(" ");
+  }
+
+  if (detail && typeof detail === "object") {
+    const msg = (detail as { msg?: unknown }).msg;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+
+  return `HTTP ${status}`;
+}
+
+/** Field names as a student would recognise them. */
+const FIELD_LABELS: Record<string, string> = {
+  code: "Module code",
+  name: "Module name",
+  email: "Email address",
+  password: "Password",
+  full_name: "Full name",
+  title: "Title",
+  due_at: "Due date",
+  module_id: "Module",
+  description: "Description",
+  module_code: "Module code",
+  notes: "Notes",
+};
+
+function describeValidationItem(item: unknown): string | null {
+  if (!item || typeof item !== "object") return null;
+  const obj = item as { type?: unknown; loc?: unknown; msg?: unknown };
+
+  // The last element of `loc` is the field; the first is "body"/"query".
+  const loc = Array.isArray(obj.loc) ? obj.loc : [];
+  const rawField = loc.length > 0 ? String(loc[loc.length - 1]) : "";
+  const field = FIELD_LABELS[rawField] ?? (rawField ? rawField.replace(/_/g, " ") : "");
+
+  const type = typeof obj.type === "string" ? obj.type : "";
+
+  // Known validators get a sentence written for a person, not a computer.
+  switch (type) {
+    case "string_too_short":
+      return field ? `${field} is too short.` : "A value is too short.";
+    case "string_too_long":
+      return field ? `${field} is too long.` : "A value is too long.";
+    case "missing":
+      return field ? `${field} is required.` : "A required field is missing.";
+    case "value_error": {
+      // Custom validators (e.g. normalize_code) raise ValueError with their own text.
+      const msg = typeof obj.msg === "string" ? obj.msg.replace(/^Value error,\s*/i, "") : "";
+      return msg ? `${field ? field + ": " : ""}${msg}.` : field ? `${field} is invalid.` : null;
+    }
+    case "string_pattern_mismatch":
+    case "string_type":
+      return field ? `${field} is not in the expected format.` : "A value is in the wrong format.";
+    case "greater_than":
+    case "greater_than_equal":
+    case "less_than":
+    case "less_than_equal":
+      return field ? `${field} is out of range.` : "A value is out of range.";
+    case "datetime_parsing":
+    case "date_parsing":
+      return field ? `${field} is not a valid date.` : "A date could not be read.";
+    case "int_parsing":
+    case "float_parsing":
+      return field ? `${field} must be a number.` : "A value must be a number.";
+    default: {
+      const msg = typeof obj.msg === "string" ? obj.msg.trim() : "";
+      if (msg) return field ? `${field}: ${msg}` : msg;
+      return field ? `${field} is invalid.` : null;
+    }
+  }
+}
+
 export async function api<T = unknown>(
   path: string,
   opts: ApiOptions = {},
@@ -316,10 +422,7 @@ export async function api<T = unknown>(
   }
 
   if (!res.ok) {
-    const detail =
-      parsed && typeof parsed === "object" && "detail" in parsed
-        ? String((parsed as { detail: unknown }).detail)
-        : `HTTP ${res.status}`;
+    const detail = extractDetail(parsed, res.status);
     throw new ApiError(detail, res.status, parsed);
   }
 

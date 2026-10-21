@@ -103,9 +103,21 @@ async def signup(
         )
     except user_service.DuplicateEmailError:
         # Uniform message: do not reveal whether the email already exists.
+        #
+        # The vagueness is a security property (account enumeration: an attacker
+        # must not be able to test which emails are registered), and it stays.
+        # But "check your details and try again" gave a student no next step,
+        # which is user 7's complaint. The message can name the actionable
+        # possibilities without naming which one applies:
+        #   - the email is already registered -> log in instead, or use another
+        #   - anything else -> the details are wrong
+        # Both remain true whichever case it really is, so nothing leaks.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Registration failed. Please check your details and try again.",
+            detail=(
+                "We could not create the account. If you already use this email, "
+                "log in instead; otherwise try a different email address."
+            ),
         ) from None
     return user
 

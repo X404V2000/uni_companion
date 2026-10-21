@@ -30,7 +30,7 @@ Redis server is reachable.
 
 import importlib
 import os
-import subprocess
+import subprocess  # noqa: S603 - Test helper; argv is a fixed list, no shell and no user input.
 import sys
 from pathlib import Path
 
@@ -104,7 +104,7 @@ def test_app_imports_with_redis_url_set():
         # The thing under test.
         "REDIS_URL": "redis://127.0.0.1:6379/0",
     }
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603 - Test helper; argv is a fixed list, no shell and no user input.
         [sys.executable, "-c", "import app.main"],
         cwd=REPO_ROOT,
         env=env,

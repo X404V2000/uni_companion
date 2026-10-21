@@ -301,7 +301,7 @@ def fetch_link_text(url: str) -> dict:
             raise LinkFetchError("Only http and https links can be read.")
         _resolve_and_check(parsed.hostname or "")
 
-        request = urllib.request.Request(
+        request = urllib.request.Request(  # noqa: S310 - URL validated by _resolve_and_check above (allow-list + host resolution); see the SSRF design.
             current,
             headers={
                 # Identify ourselves honestly, and ask for HTML.

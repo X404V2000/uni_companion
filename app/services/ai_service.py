@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import random
+import time
 import uuid
 from datetime import UTC, date, datetime
 
@@ -85,18 +86,14 @@ MAX_CHUNKS = 12
 # When a paid tier arrives, raise the limit per plan and keep this as the floor.
 DEFAULT_DAILY_LIMIT = 10
 
-
 class QuotaExceededError(Exception):
     """Raised when the user has exhausted their free daily summary limit."""
-
 
 class AIProviderUnavailableError(Exception):
     """Raised when no API key is configured or the provider call fails."""
 
-
 def _today() -> date:
     return datetime.now(UTC).date()
-
 
 def split_into_chunks(
     content: str,
@@ -145,7 +142,6 @@ def split_into_chunks(
 
     return chunks
 
-
 def _build_chunk_prompt(module_code: str, chunk: str, index: int, total: int) -> str:
     """Prompt for ONE part of a long document (the "map" step).
 
@@ -171,7 +167,6 @@ def _build_chunk_prompt(module_code: str, chunk: str, index: int, total: int) ->
         "R333 333, not $\\text{R}333\\,333$.\n\n"
         f"NOTES (part {index} of {total}):\n{chunk}"
     )
-
 
 def _merge_prompts(module_code: str, partials: list[str]) -> str:
     """Prompt that merges the partial notes into one coherent guide.
@@ -217,12 +212,10 @@ def _merge_prompts(module_code: str, partials: list[str]) -> str:
         f"EXTRACTED NOTES:\n{joined}"
     )
 
-
 def generate_content_hash(module_code: str, content: str) -> str:
     """Deterministic SHA-256 digest of (module code + sanitized content)."""
     payload = f"{module_code.upper()}:{content.strip()}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
 
 def _build_prompt(module_code: str, content: str) -> str:
     """Build the study-guide prompt.
@@ -284,14 +277,10 @@ def _build_prompt(module_code: str, content: str) -> str:
         f"NOTES:\n{truncated}"
     )
 
-
-import time as _time
-
 # Models tried in order. The primary comes from settings; the fallbacks are
 # lighter/alternative Flash aliases so a transient "high demand" 503 on one
 # model does not take the whole feature down (demo resilience).
 _FALLBACK_MODELS = ("gemini-flash-lite-latest", "gemini-2.5-flash")
-
 
 def _candidate_models() -> list[str]:
     """Primary model first, then fallbacks, de-duplicated."""
@@ -303,7 +292,6 @@ def _candidate_models() -> list[str]:
             seen.add(m)
             ordered.append(m)
     return ordered
-
 
 def _call_gemini(prompt: str) -> tuple[str, int]:
     """Call Google Gemini generateContent. Returns (text, tokens_used).
@@ -379,7 +367,10 @@ def _call_gemini(prompt: str) -> tuple[str, int]:
                     # (a thundering herd). A random offset spreads them out.
                     # The base is the previous 0.8s, so typical behaviour is
                     # unchanged and worst case is still under 1.5s.
-                    _time.sleep(0.5 + random.random() * 0.9)
+                    # noqa: S311 - retry jitter, not a security decision. There is nothing
+                    # to predict or protect here; `random` is the right tool and
+                    # `secrets` would only cost entropy for no benefit.
+                    time.sleep(0.5 + random.random() * 0.9)  # noqa: S311
                     continue
                 break
             # Any other non-200 (e.g. 404 bad model) -> move to the next model.
@@ -389,15 +380,12 @@ def _call_gemini(prompt: str) -> tuple[str, int]:
         f"Gemini unavailable after fallbacks (last={last_status})"
     )
 
-
-
 def _get_quota(db: Session, user_id: uuid.UUID, day: date) -> UserAIQuota | None:
     return (
         db.query(UserAIQuota)
         .filter(UserAIQuota.user_id == user_id, UserAIQuota.usage_date == day)
         .first()
     )
-
 
 def get_user_quota(db: Session, user_id: uuid.UUID) -> dict:
     """Read the current quota row (creates nothing). Returns a response dict."""
@@ -411,7 +399,6 @@ def get_user_quota(db: Session, user_id: uuid.UUID) -> dict:
         "daily_limit": limit,
         "remaining_credits": max(0, limit - used),
     }
-
 
 def _reserve_credit_atomically(db: Session, user_id: uuid.UUID, day: date) -> UserAIQuota:
     """Atomically claim one credit, or raise QuotaExceededError.
@@ -462,7 +449,6 @@ def _reserve_credit_atomically(db: Session, user_id: uuid.UUID, day: date) -> Us
 
     quota = _get_quota(db, user_id, day)
     return quota
-
 
 def get_or_create_summary(
     db: Session, user_id: uuid.UUID, module_code: str, content: str
@@ -558,7 +544,6 @@ def get_or_create_summary(
         "daily_limit": quota["daily_limit"],
     }
 
-
 def _refund_credit(db: Session, user_id: uuid.UUID, day: date) -> None:
     """Give back a reserved credit when the provider call failed.
 
@@ -576,7 +561,6 @@ def _refund_credit(db: Session, user_id: uuid.UUID, day: date) -> None:
         .values(summaries_used=UserAIQuota.summaries_used - 1)
     )
     db.commit()
-
 
 # ---------------------------------------------------------------------------
 # Summary history (per-user, newest first)

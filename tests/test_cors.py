@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.main import app
-
 
 def _preflight(client, origin: str, path: str = "/api/v1/auth/login"):
     """Send a browser-style CORS preflight and return the response."""

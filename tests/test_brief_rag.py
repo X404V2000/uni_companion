@@ -15,7 +15,6 @@ import uuid
 
 from app.services import brief_rag_service as rag
 
-
 # ---------------------------------------------------------------------------
 # Pure unit tests (no DB, no network)
 # ---------------------------------------------------------------------------

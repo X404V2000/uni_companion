@@ -23,11 +23,6 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
-
-from app.db.session import get_db
-from app.models.ai import UserAIQuota
-from app.models.user import User
 from app.services import ai_service
 
 

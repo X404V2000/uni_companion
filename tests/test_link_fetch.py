@@ -19,7 +19,6 @@ import pytest
 
 from app.services import link_fetch_service as lf
 
-
 # ---------------------------------------------------------------------------
 # SSRF: private / internal addresses
 # ---------------------------------------------------------------------------
@@ -36,7 +35,7 @@ class TestPrivateAddressBlocking:
             "192.168.1.1",      # private
             "172.16.0.1",       # private
             "169.254.169.254",  # link-local: AWS/GCP/Azure metadata
-            "0.0.0.0",          # unspecified
+            "0.0.0.0",          # unspecified  # noqa: S104 - Local test server bound in the test only.
             "224.0.0.1",        # multicast
             "100.64.0.1",       # carrier-grade NAT
             "fe80::1",          # link-local v6

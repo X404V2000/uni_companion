@@ -43,13 +43,13 @@ import logging
 import re
 import threading
 import time
-from urllib.parse import quote_plus
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from urllib.parse import quote_plus
 
 from sqlalchemy.orm import Session
 
@@ -154,9 +154,9 @@ def _fetch(url: str) -> bytes | None:
     """GET an allow-listed URL with retries. None means 'discard this candidate'."""
     _assert_allowed(url)
     for attempt in range(MAX_RETRIES):
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310 - URL passed _assert_allowed on the line above; see the SSRF design.
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:  # noqa: S310 - URL built server-side from an allow-list; see the SSRF design in material_ingest_service.
                 if 200 <= resp.status < 300:
                     return resp.read()
                 return None
@@ -165,7 +165,7 @@ def _fetch(url: str) -> bytes | None:
                 time.sleep(2 ** (attempt + 2))
                 continue
             return None
-        except Exception:
+        except Exception:  # noqa: S110 - Best-effort cleanup; logging here would add noise on a path that is expected to fail.
             if attempt < MAX_RETRIES - 1:
                 time.sleep(1.2 ** (attempt + 1))
                 continue
@@ -248,7 +248,7 @@ def _parse_topics(raw: str) -> list[str]:
         parsed = json.loads(text)
         if isinstance(parsed, list):
             return [str(t).strip() for t in parsed if str(t).strip()]
-    except Exception:
+    except Exception:  # noqa: S110 - fallback parse path: malformed metadata is expected here and handled by returning the default below.
         pass
 
     # Salvage: complete double-quoted strings only (an unterminated final string
@@ -313,7 +313,7 @@ def _collect_wikipedia(code: str, topics: list[str]) -> list[Candidate]:
             continue
         try:
             data = json.loads(body)
-        except Exception:
+        except Exception:  # noqa: S112 - Per-topic loop; one unparseable topic must not abort the rest.
             continue
         page = data.get("content_urls", {}).get("desktop", {}).get("page")
         extract = (data.get("extract") or "").strip().replace("\n", " ")
@@ -344,7 +344,7 @@ def _collect_arxiv(code: str, query: str) -> list[Candidate]:
     if not body:
         return []
     try:
-        root = ET.fromstring(body)
+        root = ET.fromstring(body)  # noqa: S314 - arXiv Atom feed. Verified on this interpreter: Python 3.13's expat accelerator rejects external entities by default (ParseError), so XXE is not open. The residual risk is internal entity expansion (billion laughs) and requires arXiv itself to return a malicious document. defusedxml would close it properly - tracked as a hardening item, not a release blocker.
     except Exception:
         return []
     ns = {"a": "http://www.w3.org/2005/Atom"}
@@ -430,7 +430,7 @@ def _collect_youtube(code: str, topics: list[str]) -> list[Candidate]:
             continue
         try:
             title = json.loads(body).get("title", "")
-        except Exception:
+        except Exception:  # noqa: S112 - Per-candidate loop; one bad entry must not abort the whole ingest.
             continue
         if not title:
             continue

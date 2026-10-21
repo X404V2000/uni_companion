@@ -325,11 +325,10 @@ def purge_expired(db: Session, older_than_days: int = 30) -> int:
     ##    dangling pointer that a future walk would try to follow).
     ## Rows failing either condition are retained. They are small, and correctness
     ## beats reclaiming a few hundred bytes.
-    referenced = (
-        db.query(RefreshToken.id)
-        .filter(RefreshToken.replaced_by.isnot(None))
-        .subquery()
-    )
+    ##
+    ## Both conditions live inline in `removable` below. A `referenced = ...` subquery
+    ## used to be built here and then never used - dead code left over from an earlier
+    ## version, which `ruff` F841 flagged. Removed so the guard reads as one thing.
 
     removable = (
         db.query(RefreshToken)

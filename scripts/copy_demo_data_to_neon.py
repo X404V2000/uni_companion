@@ -17,7 +17,6 @@ and no demo data, so this replaces its contents rather than merging.
 Nothing is written to the local database. It is read-only here.
 """
 import pathlib
-import re
 
 from sqlalchemy import create_engine, text
 
@@ -101,13 +100,13 @@ with local.connect() as src, remote.begin() as dst:
     # duplicate-key error halfway through.
     for table in reversed(TABLES):
         try:
-            dst.execute(text(f"DELETE FROM {table}"))
-        except Exception:
+            dst.execute(text(f"DELETE FROM {table}"))  # noqa: S608 - Table name from the hardcoded TABLES constant, never user input.
+        except Exception:  # noqa: S110 - Table may not exist in the target yet; skipping is the documented behaviour.
             pass
 
     for table in TABLES:
         try:
-            rows = src.execute(text(f"SELECT * FROM {table}")).mappings().all()
+            rows = src.execute(text(f"SELECT * FROM {table}")).mappings().all()  # noqa: S608 - Table name from the hardcoded TABLES constant, never user input.
         except Exception as exc:
             print(f"  {table:24} skipped ({str(exc)[:50]})")
             continue
@@ -119,7 +118,7 @@ with local.connect() as src, remote.begin() as dst:
         col_list = ", ".join(cols)
         placeholders = ", ".join(f":{c}" for c in cols)
         dst.execute(
-            text(f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"),
+            text(f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"),  # noqa: S608 - Table name from the hardcoded TABLES constant; all values are bound :params.
             [dict(r) for r in rows],
         )
         total += len(rows)
@@ -130,7 +129,7 @@ print(f"\n  total rows copied: {total}")
 print("\n=== verify on Neon ===")
 with remote.connect() as c:
     for table in ("users", "modules", "academic_tasks"):
-        n = c.execute(text(f"SELECT count(*) FROM {table}")).scalar()
+        n = c.execute(text(f"SELECT count(*) FROM {table}")).scalar()  # noqa: S608 - Table name from the hardcoded TABLES constant, never user input.
         print(f"  {table:24} {n}")
     demo = c.execute(
         text("SELECT count(*) FROM users WHERE email = 'demo@varsitycompanion.co.za'")

@@ -115,11 +115,11 @@ def _fetch(url: str, *, accept: str | None = None) -> bytes | None:
     caller DISCARDS the candidate — nothing unverified is ever stored.
     """
     for attempt in range(MAX_RETRIES):
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310 - Operator script; URLs are hardcoded feeds, not user input.
         if accept:
             req.add_header("Accept", accept)
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:  # noqa: S310 - Operator script; URLs are hardcoded feeds, not user input.
                 if 200 <= resp.status < 300:
                     return resp.read()
                 return None
@@ -249,7 +249,7 @@ def collect_wikipedia(module_code: str, topics: list[str]) -> list[Candidate]:
             continue
         try:
             data = json.loads(body)
-        except Exception:
+        except Exception:  # noqa: S112 - Per-module loop; one failing module must not abort the run.
             continue
         page = data.get("content_urls", {}).get("desktop", {}).get("page")
         extract = (data.get("extract") or "").strip().replace("\n", " ")
@@ -280,7 +280,7 @@ def collect_arxiv(module_code: str, query: str) -> list[Candidate]:
     if not body:
         return []
     try:
-        root = ET.fromstring(body)
+        root = ET.fromstring(body)  # noqa: S314 - Same as material_ingest_service: external entities are rejected by the stdlib parser on this interpreter; residual risk is entity expansion from a trusted-ish upstream feed. defusedxml is the proper fix, deferred.
     except Exception:
         return []
 

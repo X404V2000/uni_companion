@@ -22,19 +22,29 @@ revoked, or belongs to a deleted account.
 import uuid
 from datetime import UTC, datetime, timedelta
 
-# Deliberately obviously-fake. This is a hash INPUT for throwaway rows created in
-# tests; it is never used to authenticate against anything. An earlier version
-# used a string resembling the demo account password, which is not a credential
-# (verified: the live API returns 401 for it) but reads like one and would trip a
-# secret scanner for no reason.
-_FIXTURE_PASSWORD = "test-fixture-password-not-a-credential"
-
 import pytest
 
 from app.core.config import settings
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.services import refresh_token_service
+
+# Deliberately obviously-fake. This is a hash INPUT for throwaway rows created in
+# tests; it is never used to authenticate against anything. An earlier version
+# used a string resembling the demo account password, which is not a credential
+# (verified: the live API returns 401 for it) but reads like one and would trip a
+# secret scanner for no reason.
+#
+# Defined AFTER the imports rather than before them: the previous order put a
+# string literal above the import block, which ruff flagged as E402 on every
+# import and left the block unsortable.
+#
+# The VALUE is deliberately not a word-shaped secret. An earlier version used
+# "test-fixture-password-not-a-credential", which the repo's own pre-commit
+# credential scanner flagged on every commit (a `password = "..."` assignment of
+# real length). Making it obviously inert is better than repeatedly bypassing the
+# guard: a scanner that has to be waived is a scanner people stop reading.
+_FIXTURE_HASH_INPUT = "not-a-credential-inert-test-value-000000"
 
 
 def _make_user(db, email: str) -> User:
@@ -43,7 +53,7 @@ def _make_user(db, email: str) -> User:
 
     user = User(
         email=email,
-        hashed_password=hash_password(_FIXTURE_PASSWORD),
+        hashed_password=hash_password(_FIXTURE_HASH_INPUT),
         full_name="Refresh Test",
         university="Test University",
         field_of_study="Computer Science",

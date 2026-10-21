@@ -42,7 +42,6 @@ same bytes. If that ever stops being true, these tests fail loudly - which is th
 
 import datetime as dt
 import uuid
-from unittest.mock import patch
 
 import pytest
 
@@ -50,7 +49,7 @@ from app.models.material import StudyMaterial
 
 # The corpus. Fixed ids and timestamps: no randomness, so a snapshot is legitimate
 # rather than a flake that happens to pass.
-_STAMP = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
+_STAMP = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.UTC)
 _CORPUS = [
     ("11111111-1111-1111-1111-111111111111", "Integer overflow", "ARTICLE"),
     ("22222222-2222-2222-2222-222222222222", "Sorting algorithms", "PDF"),

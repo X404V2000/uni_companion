@@ -22,8 +22,6 @@ rather than hard-coded per route.
 """
 from __future__ import annotations
 
-import pytest
-
 from app.core import rate_limiter as rl
 
 
@@ -68,7 +66,6 @@ class TestProductionStaysStrict:
         limit. If someone loosens the production value, this fails.
         """
         import importlib
-        import sys
 
         import app.core.config as config_module
 

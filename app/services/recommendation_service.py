@@ -30,7 +30,6 @@ import hashlib
 import logging
 import uuid
 
-
 from sqlalchemy.orm import Session
 
 from app.models.ai import AISummaryCache
@@ -113,7 +112,7 @@ def get_recommendations(
     # Cache key: user + module + library fingerprint. Namespaced so it can
     # never collide with a study-notes summary hash.
     cache_key = hashlib.sha256(
-        f"{_RECO_PREFIX}{code}:{_material_fingerprint(items)}".encode("utf-8")
+        f"{_RECO_PREFIX}{code}:{_material_fingerprint(items)}".encode()
     ).hexdigest()
 
     cached = (

@@ -370,10 +370,28 @@ function OverviewTab({
             );
           })}
 
+          {/*
+            First-run guidance (TASK-0007, user 6: "instructions are a bit
+            complicated for first time users").
+
+            The empty state said "Add one to get started", which names the
+            action but not WHY it comes first. A new student does not yet know
+            that deadlines, summaries and materials are all scoped to a module,
+            so adding one reads as optional setup rather than the step that
+            makes everything else work.
+
+            One sentence, shown only when there are no modules. No tour, no
+            modal - a walkthrough on a deadline week introduces more bugs than
+            it prevents.
+          */}
           {!loading && moduleList.length === 0 && (
-            <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center text-xs text-[var(--color-fg-muted)]">
-              No modules yet. Add one to get started.
-            </p>
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
+              <p className="text-xs font-bold text-[var(--color-fg)]">No modules yet</p>
+              <p className="mt-2 text-xs text-[var(--color-fg-muted)]">
+                Add your modules first. Deadlines, summaries and materials all work
+                against them.
+              </p>
+            </div>
           )}
         </div>
       </div>

@@ -167,6 +167,18 @@ const AUTH_PATHS = new Set([
   "/api/v1/auth/refresh",
 ]);
 
+/**
+ * Endpoints where a 401 means "the password you just typed is wrong", NOT "your session
+ * is over".
+ *
+ * `DELETE /api/v1/auth/account` requires the current password as re-authentication, and
+ * answers 401 for a bad one. Without this set, the shared 401 handler would clear the
+ * access token - signing the student out of a perfectly valid session because they
+ * mistyped a password on a destructive action. The session is fine; only the password was
+ * wrong, and the screen needs to say so and let them retry.
+ */
+const REAUTH_PATHS = new Set(["/api/v1/auth/account"]);
+
 async function doRefresh(): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
@@ -254,7 +266,11 @@ export async function api<T = unknown>(
   //
   // The auth paths are exempt: a 401 from /auth/refresh means "no session", not
   // "refresh and retry", and retrying there would recurse.
-  if (res.status === 401 && !AUTH_PATHS.has(path)) {
+  //
+  // Re-authentication paths are exempt too: a 401 from `DELETE /auth/account` means the
+  // PASSWORD was wrong, so refreshing the token and replaying the delete would resend the
+  // same wrong password and 401 again - a wasted round trip that changes nothing.
+  if (res.status === 401 && !AUTH_PATHS.has(path) && !REAUTH_PATHS.has(path)) {
     const refreshed = await refreshOnce();
     if (refreshed) {
       // Replay with the SAME method, headers and body. A replayed POST that loses
@@ -277,10 +293,14 @@ export async function api<T = unknown>(
         throw new ApiError("Network error", 0, null);
       }
     }
-    // Still 401 after a successful refresh, or the refresh failed: the session is
-    // genuinely over. Clearing here is correct - unlike a network failure, the
-    // server has told us the credential is no good.
-    if (res.status === 401) {
+    // Still 401 after a successful refresh, or the refresh failed.
+    //
+    // ⚠️ NOT every 401 means the session is over. `DELETE /auth/account` returns 401 when
+    // the re-authentication PASSWORD is wrong, while the access token is perfectly valid.
+    // Clearing the token there would log a student out of a good session because they
+    // mistyped their password on a destructive action - the opposite of what they asked
+    // for. Those endpoints are listed in REAUTH_PATHS and are exempt.
+    if (res.status === 401 && !REAUTH_PATHS.has(path)) {
       clearToken();
     }
   }

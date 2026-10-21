@@ -15,6 +15,7 @@ import OverviewTab from "./components/OverviewTab";
 import SummariesTab from "./components/SummariesTab";
 import PlannerTab from "./components/PlannerTab";
 import MaterialsTab from "./components/MaterialsTab";
+import SettingsPanel from "./components/SettingsPanel";
 
 const tabs: { label: string; icon: IconName; short: string }[] = [
   { label: "Overview", icon: "home", short: "Home" },
@@ -102,6 +103,11 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState("Overview");
   const [toast, setToast] = useState("");
+
+  // Settings replaces the tab content rather than sitting in the tab bar: the bar is full
+  // at four, and settings is not a place a student visits daily. `null` means "not in
+  // settings"; the tab underneath is left untouched so returning restores it.
+  const [showSettings, setShowSettings] = useState(false);
 
   // The loaded account. OverviewTab uses it for the greeting, so it is held
   // here rather than fetched again by each child.
@@ -239,24 +245,40 @@ export default function App() {
             {BUILD}
           </div>
           <button
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-surface)] text-[11px] font-extrabold text-white"
-            // Wrapped rather than passed directly: signOut is async only because it
-            // awaits the server-side revoke. React discards the promise, so an escaping
-            // rejection would be an unhandled rejection - harmless here because logout()
-            // swallows network errors, but the void makes that explicit rather than
-            // relying on a property of another module.
-            onClick={() => void signOut()}
-            aria-label="Sign out"
-            title="Sign out"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-surface)] text-white"
+            onClick={() => setShowSettings((v) => !v)}
+            aria-label={showSettings ? "Close settings" : "Settings"}
+            aria-expanded={showSettings}
+            title="Settings"
           >
-            {/* Real initials from the loaded profile. "TM" was a hardcoded
-                placeholder from the design export and showed for every user. */}
-            {initials(profile?.full_name)}
+            {/* Was the sign-out initials button. Sign-out, consent and account deletion now
+                live on the Settings screen (TASK-0004): two users could not find settings,
+                and one could not delete their account at all, because the only control in
+                the header was sign out. The initials moved there with the rest. */}
+            <Icon name="settings" className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      {activeTab === "Overview" && (
+      {showSettings && (
+        <SettingsPanel
+          onBack={() => setShowSettings(false)}
+          onSignedOut={() => {
+            setShowSettings(false);
+            // Reuses the shell's own teardown so there is one sign-out path. Does NOT call
+            // signOut(): SettingsPanel has already awaited logout(), and calling it twice
+            // would revoke an already-revoked token.
+            forgetSession();
+            setProfile(null);
+            setModuleList([]);
+            setAuthenticated(false);
+            setActiveTab("Overview");
+          }}
+
+        />
+      )}
+
+      {!showSettings && activeTab === "Overview" && (
         <div className="mx-auto w-full max-w-[480px] px-4 py-2 sm:max-w-[640px]">
           <div className="flex items-end justify-between">
             <div>
@@ -282,6 +304,10 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[480px] px-4 pb-6 pt-3 sm:max-w-[640px]">
+{/* Hidden while Settings is open: the panel renders above this block, so leaving the
+    tabs mounted would paint two screens on top of each other. Mounting is kept (not
+    conditional) so returning from Settings does not refetch every tab. */}
+          <div hidden={showSettings}>
 {activeTab === "Overview" && (
               <OverviewTab
                 onTabChange={setActiveTab}
@@ -304,6 +330,7 @@ export default function App() {
                 onModulesChanged={reloadModules}
               />
             )}
+          </div>
         </div>
       </main>
 

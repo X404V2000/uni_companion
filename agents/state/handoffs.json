@@ -1,7 +1,7 @@
 {
   "$schema": "../state.schema.json",
   "version": "1.0.0",
-  "updated_at": "2026-10-17T19:45:00+02:00",
+  "updated_at": "2026-10-21T11:50:00+02:00",
   "owner": "any — append your own handoffs; never edit someone else's",
   "handoffs": [
     {
@@ -58,6 +58,28 @@
       "commit": null,
       "pr": null,
       "known_limitations": []
+    },
+    {
+      "id": "HO-0004",
+      "task_id": "TASK-0004",
+      "from": "tech-lead",
+      "to": "dev-web",
+      "at": "2026-10-21T11:50:00+02:00",
+      "summary": "Settings screen spec is ready: conversation/spec_task_0004_settings.md. This is user 1 + user 2, the highest-value fix before Sunday. Build it exactly as specified and stop there.",
+      "evidence": [
+        "Frontend 200 in 0.3s at https://uni-companion.scrapymog.workers.dev",
+        "API health 200 in 2.3s",
+        "CORS from the scrapymog origin returns 200 with the correct allow-origin header",
+        "Live bundle embeds https://uni-companion.onrender.com",
+        "DELETE /auth/account at auth.py:318; consent GET/POST at analytics.py:93,119",
+        "Settings icon exists at Icon.tsx:9 but is never rendered"
+      ],
+      "changed_files": [],
+      "commit": null,
+      "pr": null,
+      "known_limitations": [
+        "The mobile app already has a settings tab; this task is the WEB client only"
+      ]
     }
   ]
 }

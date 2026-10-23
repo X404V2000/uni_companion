@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "./Icon";
 import AddDeadlineForm from "./AddDeadlineForm";
 import ManageModulesPanel from "./ManageModulesPanel";
+import StudyPlanCard from "./StudyPlanCard";
 import {
   getActivity,
   getDashboard,
@@ -267,6 +268,8 @@ function OverviewTab({
           </button>
         </div>
       )}
+
+      <StudyPlanCard onOpenPlanner={() => onTabChange("Study Planner")} />
 
       <div className="rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
         <div className="mb-4 flex items-start justify-between">

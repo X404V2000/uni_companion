@@ -29,6 +29,13 @@
     "backgroundColor": "#1C1814",
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "93180e78-81fe-45f5-9ec8-b3ac6cd6381f"
+      }
+    },
+    "owner": "deathrok"
   }
 }

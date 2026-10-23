@@ -1,0 +1,98 @@
+# .github/workflows/keep-warm.yml
+#
+# Keeps the free-tier backend from going to sleep.
+# ---------------------------------------------------------------------------
+# Render's free instance sleeps after ~15 minutes of no traffic, and the first
+# request after that takes 5-15 seconds. For a demo, a slow first request looks
+# like a broken app. This job requests /health on a schedule so the instance
+# stays awake.
+#
+# WHAT THIS DOES AND DOES NOT DO - read before relying on it
+# ----------------------------------------------------------
+# DOES:  keeps the instance from idling out, which is the main cause of a 10s
+#        blank screen at the start of a demo.
+# DOES NOT: make the service bulletproof. Render's free tier has a monthly
+#        instance-hour allowance (~750h). A job running every 10 minutes is
+#        roughly 730 hours a month, so it fits - but only just, and only for ONE
+#        service. If a second free service is ever added, this will exhaust the
+#        allowance for both. Remove or widen the cron at that point.
+# DOES NOT: protect against a real outage or a bad deploy. Nothing on the client
+#        can do that; the app already handles it by saying the connection failed
+#        rather than hanging.
+#
+# WHY EVERY 10 MINUTES
+# Render sleeps at ~15 minutes idle. Pinging every 10 gives one retry of margin
+# before the deadline, without burning extra minutes.
+#
+# WHY A FIXED SCHEDULE AND NOT "ONLY BEFORE DEMOS"
+# GitHub's scheduled runs are best-effort and can be delayed by several minutes
+# under load. A schedule that only starts before an event could be late; a
+# steady ping is simpler and the cost is the same.
+
+name: Keep backend warm
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub crons are UTC and best-effort.
+    - cron: "*/10 * * * *"
+  # Lets you poke it by hand from the Actions tab before recording.
+  workflow_dispatch:
+
+# If a run is still going when the next fires, do not stack them.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Wake the backend
+        env:
+          API: https://uni-companion.onrender.com
+        run: |
+          set -u
+
+          # Retry: the very first request after a sleep is the one that wakes the
+          # instance, and it can take longer than a normal health check. Three
+          # attempts with a generous timeout covers a cold start.
+          attempt=1
+          max_attempts=3
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "Attempt $attempt of $max_attempts: GET $API/health"
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' \
+                     --max-time 90 \
+                     "$API/health" || echo "000")
+
+            if [ "$code" = "200" ]; then
+              echo "Backend is awake."
+              cat /tmp/health.json
+              # A 200 with database_connected=false is NOT healthy - the process
+              # is up but cannot serve requests. Surface it rather than hiding it.
+              if grep -q '"database_connected":false' /tmp/health.json; then
+                echo "::warning::Backend is up but the database is not connected."
+                exit 1
+              fi
+              exit 0
+            fi
+
+            echo "Got HTTP $code; waiting 20s before retrying."
+            attempt=$((attempt + 1))
+            sleep 20
+          done
+
+          # Do NOT fail loudly on every scheduled failure: a transient network
+          # blip is not an incident and a red run every hour trains people to
+          # ignore the signal. A warning is enough for a warm-up job.
+          echo "::warning::Could not wake the backend after $max_attempts attempts (last HTTP $code)."
+          exit 0
+
+      - name: Record that the backend answered
+        if: success()
+        run: echo "Backend warm at $(date -u +%Y-%m-%dT%H:%M:%SZ)"

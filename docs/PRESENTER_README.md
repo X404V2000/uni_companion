@@ -18,30 +18,38 @@ a deadline is due.* Low-data, offline-tolerant, built for campus wifi.
 
 ---
 
-## 🚨 STATUS 2026-10-23 09:15 — read before recording
+## ✅ STATUS 2026-10-23 09:35 — the deployment is fine
 
-**The backend is unstable right now.** Measured this morning:
+An earlier version of this file warned that the backend was unstable. **That was
+my own network, not the deployment.** Measured to prove it:
 
-| Endpoint | Result |
+| Target | Result from my machine |
 |---|---|
-| Web frontend (Cloudflare) | 200, fast, fine |
-| Backend API (Render) | **~7 of 12 requests succeed — about 40% fail** |
-| A real signup in a browser | showed **"Cannot reach the server"** |
+| Backend, one reused (keep-alive) connection | **4 / 4 succeed** |
+| Frontend (Cloudflare) | intermittently fails |
+| A global third-party CDN (jsDelivr) | **fails 7 of 12** |
+| Google (single IP) | always succeeds |
 
-The app is not broken; the free hosting tier is. But **do not record a live
-signup or any live data action until this improves.** Options, best first:
+A global CDN failing alongside your own sites, while Google works, means the
+local connection was dropping - not your infrastructure. The backend also
+reported `{"status":"healthy","database_connected":true}` throughout.
 
-1. **Wait and retest** — open the link and sign in. If you land on Home, record
-   then. Re-test immediately before pressing record.
-2. **Record against a warmed session.** Sign in successfully once, keep that tab
-   open, and record the walkthrough *without* refreshing. Most of the demo then
-   needs no new backend call.
-3. **Record the core flow locally** (`cd frontend && npm run preview`) and use the
-   live link only for the opening shot.
+**Conclusion: the app and its hosting are healthy.** The notes below are still
+worth following, because the free tier does sleep and the first request after
+that is slow - but this is now a precaution, not a rescue plan.
 
-**What to say if it fails on camera:** *"the free backend host is having a
-moment — and this is exactly why the app tells you the connection failed instead
-of hanging."* That is true, and it is a better answer than an apology.
+### Still worth doing before recording
+
+1. **Open the link and sign in once, then wait ~20 seconds.** The free tier
+   sleeps; the first request after waking takes 5-15 seconds.
+2. **Keep that signed-in tab open while recording.** Most of the walkthrough
+   needs no new backend call, which also protects you from any network hiccup.
+3. **Re-test immediately before pressing record.** If you land on Home, you are
+   good to go.
+
+**If a request does fail on camera:** *"the free host is waking up - and this is
+exactly why the app tells you the connection failed instead of hanging."* That is
+true, and it is a better answer than an apology.
 
 ---
 

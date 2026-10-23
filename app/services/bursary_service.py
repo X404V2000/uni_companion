@@ -74,30 +74,65 @@ def _terms(value: str | None) -> set[str]:
     return {w for w in cleaned.split() if len(w) >= 3}
 
 
+# Words too generic to identify a FIELD OF STUDY on their own. If a match comes
+# only from one of these, it is not a field match.
+#
+# WHY THIS LIST EXISTS - a measured bug, 2026-10-23
+# --------------------------------------------------
+# The first version of _overlaps() matched on a 5-character prefix "to be
+# generous". A Computer Science student was then matched to a Nursing bursary,
+# because "Computer SCience" and "health SCIences" share "sci". The UI said
+# "For Computer Science students" under a nursing bursary - a false claim, which
+# is the worst possible output for this feature. Generosity in a matcher that
+# prints its reasoning is not generosity, it is lying.
+_FIELD_STOPWORDS = frozenset(
+    """
+    science sciences arts studies study
+    """.split()
+)
+# DELIBERATELY NOT STOPWORDS: 'engineering', 'technology', 'management',
+# 'business', 'administration'. These name a field rather than a generic suffix -
+# dropping 'engineering' meant a Chemical Engineering student matched nothing at
+# all, which is the opposite failure and just as bad. Only words that carry no
+# field information belong above.
+
+
+def _significant(terms: set[str]) -> set[str]:
+    """Drop words that cannot identify a field on their own."""
+    return {t for t in terms if t not in _FIELD_STOPWORDS}
+
+
+def _stem(word: str) -> str:
+    """Very small, explicit plural fold.
+
+    'sciences' and 'science' are the same field. 'Humanities' cannot be folded
+    safely and is left alone - a missed match is survivable; a wrong one is not.
+    """
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
 def _overlaps(user_value: str | None, allowed: list | None) -> bool:
     """True if `user_value` plausibly falls within `allowed`.
 
-    Matching is deliberately generous: 'Computer Science' should match
-    'computing' and 'engineering' should match 'Chemical Engineering'. A false
-    positive here only adds a reason line; a false negative hides funding the
-    student could have had.
+    Matching is exact on significant words, after plural folding. 'Computing'
+    does NOT match 'Computer Science' by punning on a prefix - if those should
+    match, the seed entry should say 'computing' or 'computer science' as the
+    field, which is a content decision and not a guess made by a matcher that
+    then prints the guess to the student.
     """
     if not user_value or not allowed:
         return False
-    user_terms = _terms(user_value)
+    user_terms = {_stem(t) for t in _significant(_terms(user_value))}
     if not user_terms:
         return False
     for entry in allowed:
-        allowed_terms = _terms(str(entry))
-        if not allowed_terms:
-            continue
-        if user_terms & allowed_terms:
+        allowed_terms = {_stem(t) for t in _significant(_terms(str(entry)))}
+        if allowed_terms and (user_terms & allowed_terms):
             return True
-        # Prefix match covers 'comput*' style families: comput|ing, comput|er.
-        for a in allowed_terms:
-            for u in user_terms:
-                if len(a) >= 4 and len(u) >= 4 and (a.startswith(u[:5]) or u.startswith(a[:5])):
-                    return True
     return False
 
 

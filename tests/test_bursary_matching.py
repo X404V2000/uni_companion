@@ -98,7 +98,10 @@ class TestEligibility:
 
 class TestScoring:
     def test_matching_field_of_study_scores_and_explains(self):
-        computing = _bursary(fields_of_study=["computing", "engineering"])
+        # 'computer science' appears in the seed as its own phrase. The matcher
+        # no longer punts from 'computing' to 'Computer Science' - see
+        # TestFieldMatchingPrecision for why that was removed.
+        computing = _bursary(fields_of_study=["computer science", "engineering"])
         score, reasons = svc.score(computing, _user(field_of_study="Computer Science"), TODAY)
         assert score > 0
         # The reason must name the student's own field so it reads as personal,
@@ -135,6 +138,47 @@ class TestScoring:
         targeted_score, _ = svc.score(targeted, _user(), TODAY)
         open_score, _ = svc.score(open_to_all, _user(), TODAY)
         assert targeted_score > open_score
+
+
+class TestFieldMatchingPrecision:
+    """Regression: the prefix matcher matched unrelated fields.
+
+    Measured 2026-10-23 against the seeded data: a Computer Science student was
+    shown a Nursing bursary with the reason "For Computer Science students",
+    because "Computer SCience" and "health SCIences" share "sci". A false
+    claim printed next to a bursary destroys the feature's credibility.
+    """
+
+    def test_computer_science_does_not_match_nursing(self):
+        nursing = _bursary(
+            name="Nursing Bursary", fields_of_study=["nursing", "health sciences", "medicine"]
+        )
+        score, _ = svc.score(nursing, _user(field_of_study="Computer Science"), TODAY)
+        assert score == 0
+
+    def test_generic_science_words_alone_do_not_match(self):
+        """'Science' is too generic to identify a field by itself."""
+        health = _bursary(fields_of_study=["health sciences"])
+        score, _ = svc.score(health, _user(field_of_study="Political Science"), TODAY)
+        assert score == 0
+
+    def test_plural_folding_matches(self):
+        """'Computer Science' and 'computer sciences' are the same field."""
+        fund = _bursary(fields_of_study=["computer sciences"])
+        score, _ = svc.score(fund, _user(field_of_study="Computer Science"), TODAY)
+        assert score > 0
+
+    def test_real_field_match_still_works(self):
+        accounting = _bursary(fields_of_study=["accounting", "commerce"])
+        score, reasons = svc.score(accounting, _user(field_of_study="Accounting"), TODAY)
+        assert score > 0
+        assert any("Accounting" in r for r in reasons)
+
+    def test_engineering_matches_sub_discipline(self):
+        """A Chemical Engineering student must match an engineering bursary."""
+        eng = _bursary(fields_of_study=["engineering"])
+        score, _ = svc.score(eng, _user(field_of_study="Chemical Engineering"), TODAY)
+        assert score > 0
 
 
 class TestRanking:

@@ -92,7 +92,7 @@ def test_payload_carries_reasons_and_days_left(client, db):
     token = _signup_and_token(client)
     _bursary(
         db,
-        fields_of_study=["computing"],
+        fields_of_study=["computer science"],
         application_closes=date.today() + timedelta(days=12),
     )
 
@@ -108,7 +108,7 @@ def test_payload_carries_reasons_and_days_left(client, db):
 
 def test_detail_endpoint_scores_for_the_caller(client, db):
     token = _signup_and_token(client)
-    b = _bursary(db, fields_of_study=["computing"])
+    b = _bursary(db, fields_of_study=["computer science"])
 
     resp = client.get(f"/api/v1/bursaries/{b.id}", headers=_auth(client, token))
     assert resp.status_code == 200, resp.text

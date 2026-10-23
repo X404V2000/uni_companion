@@ -79,14 +79,25 @@ function initials(name: string | null | undefined): string {
 }
 
 /**
- * Build stamp, shown in the header.
+ * Build stamp.
  *
  * This exists because a cached service worker once served an old bundle while
  * every server-side check said the new one was deployed — which made a working
  * fix look broken. A stamp that changes on every build turns that invisible
  * failure into a glanceable fact.
+ *
+ * NOT CURRENTLY RENDERED: the pill in the header was removed on 2026-10-23 as
+ * demo clutter. To bring it back, render `BUILD` in the header again (the vite
+ * define is still wired, so the value is correct). Kept rather than deleted
+ * because the stale-cache failure it guards against is a real one that has
+ * happened before, and re-adding a diagnostic is cheaper than rediscovering the
+ * problem without it.
+ *
+ * `void BUILD` below keeps the binding referenced so the dead-code check stays
+ * honest about what is intentional.
  */
 const BUILD = `build ${__BUILD_STAMP__}`;
+void BUILD;
 
 /**
  * Today's date for the header, e.g. "Wednesday, 30 Sep".
@@ -244,10 +255,11 @@ export default function App() {
         </div>
 
         <div className="ml-auto flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[10px] font-bold text-[var(--color-fg-muted)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-teal)]" />
-            {BUILD}
-          </div>
+          {/* The build stamp pill was here. Removed on the founder's instruction
+              (2026-10-23) for the demo: it read as developer clutter in the
+              header. The `__BUILD_STAMP__` constant and the vite define are kept
+              so it can be restored in one line if a stale-cache problem returns
+              - see the note on BUILD below. */}
           <button
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-surface)] text-white"
             onClick={() => setShowSettings((v) => !v)}
@@ -292,16 +304,14 @@ export default function App() {
               <h1 className="font-display text-[24px] font-extrabold tracking-[-0.03em] text-[var(--color-fg)]">
               </h1>
             </div>
-            <button
-              onClick={() => notify("Synced")}
-              className="flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[10px] font-bold text-[var(--color-fg-muted)] shadow-sm"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-teal)] opacity-50" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-teal)]" />
-              </span>
-              Synced
-            </button>
+            {/* The "Synced" pill was here. Removed on the founder's instruction
+                (2026-10-23). It claimed a sync state the app does not actually
+                track: it rendered a static teal dot with an animation whether or
+                not anything had synced, and its onClick only fired a toast
+                saying "Synced". A status light that is always on is worse than
+                no status light - it trains a student to distrust the indicators
+                that do mean something. If a real sync indicator is wanted later,
+                it must be driven by the sync service, not hardcoded. */}
           </div>
         </div>
       )}

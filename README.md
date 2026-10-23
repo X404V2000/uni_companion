@@ -171,4 +171,9 @@ plan/             architecture blueprints and reports
 
 ## Licence
 
-Proprietary — all rights reserved.
+[**PolyForm Noncommercial 1.0.0**](LICENSE) — free to read, study, modify, and use
+for any noncommercial purpose, including personal projects, research, and
+teaching. **All commercial rights are reserved.**
+
+GitHub lists this as "Other" because it is not in their licence library; the
+file above is the authoritative text.

@@ -15,6 +15,7 @@ import OverviewTab from "./components/OverviewTab";
 import SummariesTab from "./components/SummariesTab";
 import PlannerTab from "./components/PlannerTab";
 import MaterialsTab from "./components/MaterialsTab";
+import BursariesTab from "./components/BursariesTab";
 import SettingsPanel from "./components/SettingsPanel";
 
 const tabs: { label: string; icon: IconName; short: string }[] = [
@@ -28,6 +29,9 @@ const tabs: { label: string; icon: IconName; short: string }[] = [
   //
   // When saving is built, restore it here and add a matching render block below. The
   // `bookmark` icon is deliberately left in Icon.tsx so that needs no new artwork.
+  // Bursaries sits before the Planner so funding and study deadlines are
+  // adjacent in the bar - they are the two things with a closing date.
+  { label: "Bursaries", icon: "bookmark", short: "Funding" },
   { label: "Study Planner", icon: "calendar", short: "Planner" },
 ];
 
@@ -323,6 +327,7 @@ export default function App() {
             {activeTab === "Find Materials" && (
               <MaterialsTab notify={notify} moduleList={moduleList} />
             )}
+            {activeTab === "Bursaries" && <BursariesTab />}
             {activeTab === "Study Planner" && (
               <PlannerTab
                 notify={notify}

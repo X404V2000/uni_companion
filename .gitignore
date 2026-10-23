@@ -242,3 +242,6 @@ plan/
 
 # users responses - must be private, vulnarabilities must not be leaked 
 users_responses/
+
+# bursary list
+found_bursaries.md

@@ -11,6 +11,7 @@ from app.models.analytics import (
     UsageEvent,
     UserConsent,
 )
+from app.models.bursary import Bursary
 from app.models.material import StudyMaterial
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
@@ -30,4 +31,5 @@ __all__ = [
     "BriefDocument",
     "BriefChunk",
     "RefreshToken",
+    "Bursary",
 ]

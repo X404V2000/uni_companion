@@ -22,7 +22,7 @@ Guards against:
   - an unexpected head
 
 WHEN A NEW MIGRATION LANDS: update EXPECTED_HEAD below, and add a row to
-plan/MIGRATION_LOG.md. The failure message says exactly that.
+docs/MIGRATION_LOG.md. The failure message says exactly that.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from pathlib import Path
 VERSIONS_DIR = Path(__file__).parent.parent / "alembic" / "versions"
 
 # The single expected head. Update deliberately when a migration is added.
-EXPECTED_HEAD = "0013"
+EXPECTED_HEAD = "0014"
 
 # Matches both `revision = "0001"` and the annotated `revision: str = "0001"`.
 _REVISION_RE = re.compile(
@@ -92,7 +92,7 @@ def test_no_duplicate_revisions():
     assert not duplicates, (
         f"duplicate revision ids: {duplicates}. Two migrations claim the same "
         "revision, so `alembic upgrade head` cannot resolve the chain. "
-        "Renumber the newer one and add it to plan/MIGRATION_LOG.md."
+        "Renumber the newer one and add it to docs/MIGRATION_LOG.md."
     )
 
 
@@ -138,7 +138,7 @@ def test_head_is_expected():
     assert heads == [EXPECTED_HEAD], (
         f"head is {heads}, expected {[EXPECTED_HEAD]!r}. If a migration was "
         "intentionally added, update EXPECTED_HEAD here AND add a row to "
-        "plan/MIGRATION_LOG.md. If it was removed, investigate."
+        "docs/MIGRATION_LOG.md. If it was removed, investigate."
     )
 
 

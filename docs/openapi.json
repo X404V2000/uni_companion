@@ -419,6 +419,110 @@
         "title": "BriefResponse",
         "type": "object"
       },
+      "BursaryMatch": {
+        "description": "One bursary, as the student sees it.\n\nDeliberately flat. The student-facing fields only - the matching columns\n(`min_year`, `institutions`, ...) are rules the server applied, not\ninformation the student needs.",
+        "properties": {
+          "closes_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes On"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "match_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Match Reasons",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opens_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opens On"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "score": {
+            "default": 0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "description",
+          "url"
+        ],
+        "title": "BursaryMatch",
+        "type": "object"
+      },
+      "BursaryPage": {
+        "description": "Envelope matching PaginatedResponse so clients parse one way everywhere.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BursaryMatch"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "BursaryPage",
+        "type": "object"
+      },
       "ConsentHistoryEntry": {
         "description": "One row of the append-only audit log.",
         "properties": {
@@ -4441,6 +4545,71 @@
         "summary": "Register a new student account",
         "tags": [
           "Authentication"
+        ]
+      }
+    },
+    "/api/v1/bursaries/matches": {
+      "get": {
+        "description": "Returns bursaries the caller is eligible for, best match first. Closed bursaries and bursaries the student cannot apply for are excluded entirely rather than ranked last. Each item carries `match_reasons` explaining why it is there.",
+        "operationId": "list_matches_api_v1_bursaries_matches_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BursaryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Bursaries this student can apply for",
+        "tags": [
+          "Bursaries"
+        ]
+      }
+    },
+    "/api/v1/bursaries/{bursary_id}": {
+      "get": {
+        "operationId": "get_bursary_api_v1_bursaries__bursary_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bursary_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bursary Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BursaryMatch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One bursary",
+        "tags": [
+          "Bursaries"
         ]
       }
     },

@@ -65,6 +65,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.bursaries import router as bursaries_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.materials import router as materials_router
 from app.api.v1.sync import router as sync_router
@@ -512,6 +513,7 @@ async def health_check(request: Request, db: Session = Depends(get_db)):
 # Wire in the v1 API routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(bursaries_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(materials_router, prefix="/api/v1")

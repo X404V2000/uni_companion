@@ -1,0 +1,9 @@
+# Linguist overrides.
+#
+# Product language is the backend (Python) plus the web and mobile clients
+# (TypeScript). `archive/` holds superseded work kept for history only - the
+# abandoned TypeScript backend and old plan reports - so it is marked vendored
+# to keep it out of the repository language statistics. Vendored files are
+# still browsable and remain in git history; nothing is deleted.
+
+archive/** linguist-vendored

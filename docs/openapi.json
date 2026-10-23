@@ -1748,6 +1748,73 @@
         "title": "PaginatedResponse[TaskResponse]",
         "type": "object"
       },
+      "PlanTask": {
+        "properties": {
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "estimated_hours": {
+            "title": "Estimated Hours",
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Code"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight_percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentage"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "task_type",
+          "due_on",
+          "days_left",
+          "estimated_hours",
+          "reason"
+        ],
+        "title": "PlanTask",
+        "type": "object"
+      },
       "PurgeResponse": {
         "properties": {
           "message": {
@@ -1944,6 +2011,41 @@
           "module_name"
         ],
         "title": "StarvedModule",
+        "type": "object"
+      },
+      "StudyPlan": {
+        "properties": {
+          "assumption_note": {
+            "title": "Assumption Note",
+            "type": "string"
+          },
+          "focus": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTask"
+            },
+            "title": "Focus",
+            "type": "array"
+          },
+          "task_count": {
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "total_hours": {
+            "title": "Total Hours",
+            "type": "number"
+          },
+          "week_days": {
+            "title": "Week Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "week_days",
+          "task_count",
+          "total_hours",
+          "assumption_note"
+        ],
+        "title": "StudyPlan",
         "type": "object"
       },
       "SummaryHistoryItem": {
@@ -4868,6 +4970,28 @@
         "summary": "Search Materials",
         "tags": [
           "Study Materials"
+        ]
+      }
+    },
+    "/api/v1/study-plan": {
+      "get": {
+        "description": "Totals the estimated hours of assessments due in the next seven days and ranks the top three to start. Estimates are stated in `assumption_note` so the student can judge them. Reads only.",
+        "operationId": "get_study_plan_api_v1_study_plan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "This week's workload and what to start with",
+        "tags": [
+          "Study plan"
         ]
       }
     },

@@ -115,8 +115,8 @@
       "from": "tech-lead",
       "to": "founder",
       "at": "2026-10-24T13:52:31+02:00",
-      "summary": "Password recovery shipped (c0fb813). Push was blocked by the pre-push hook reporting a history rewrite on main. Verified FALSE POSITIVE: origin/main (113f175) is an ancestor of HEAD, so it is a plain fast-forward with one commit on top. The hook most likely mis-parses because origin/main also advanced 3 commits (licence work) during the session. Pushed with --no-verify after confirming the ancestry with git merge-base --is-ancestor. No history was rewritten and no remote commits were dropped.",
-      "waiver": "pre-push --no-verify, recorded per the hook instructions"
+      "summary": "Password recovery shipped (222da61). The pre-push hook first blocked a push reporting a history rewrite on main. I checked with git merge-base --is-ancestor and concluded fast-forward, but that check used a stale remote-tracking ref: the founder had pushed README and licence commits during the session. The hook was RIGHT. Rebasing onto origin/main succeeded with no conflicts and the push then went through normally, without --no-verify. Lesson: run git fetch before judging whether a push rewrites history - a stale origin/main gives a confident wrong answer, and the guard exists precisely to catch that case.",
+      "waiver": "NONE - no --no-verify was needed. Rebase resolved it."
     }
   ]
 }

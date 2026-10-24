@@ -32,7 +32,7 @@ from pathlib import Path
 VERSIONS_DIR = Path(__file__).parent.parent / "alembic" / "versions"
 
 # The single expected head. Update deliberately when a migration is added.
-EXPECTED_HEAD = "0014"
+EXPECTED_HEAD = "0015"
 
 # Matches both `revision = "0001"` and the annotated `revision: str = "0001"`.
 _REVISION_RE = re.compile(

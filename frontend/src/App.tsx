@@ -16,6 +16,7 @@ import SummariesTab from "./components/SummariesTab";
 import PlannerTab from "./components/PlannerTab";
 import MaterialsTab from "./components/MaterialsTab";
 import BursariesTab from "./components/BursariesTab";
+import ResetPasswordPage from "./components/ResetPasswordPage";
 import SettingsPanel from "./components/SettingsPanel";
 
 const tabs: { label: string; icon: IconName; short: string }[] = [
@@ -213,6 +214,19 @@ export default function App() {
     // A blank frame is better than the login form flashing for a signed-in
     // student. Uses the palette background so it is not a white flash either.
     return <div className="min-h-screen bg-[var(--color-bg)]" />;
+  }
+
+  // Recovery is reachable BEFORE the auth gate on purpose: the student using it
+  // is locked out by definition and could never pass the gate below.
+  if (window.location.pathname.replace(/\/+$/, "") === "/reset") {
+    return (
+      <ResetPasswordPage
+        onBackToSignIn={() => {
+          window.history.replaceState({}, "", "/");
+          window.location.reload();
+        }}
+      />
+    );
   }
 
   if (!authenticated) {

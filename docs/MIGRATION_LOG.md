@@ -43,6 +43,7 @@ expected head). A new migration that is not reflected in `EXPECTED_HEAD` fails C
 | `0012` | `0011` | `0012_consent_and_signals.py` | POPIA: user_consents (audit) + improvement_signals (no content) | 2026-09-29 |
 | `0013` | `0012` | `0013_refresh_tokens.py` | refresh_tokens: revocable sessions, rotation + replay detection | 2026-10-03 |
 | `0014` | `0013` | `0014_bursaries.py` | bursaries table + (is_active, closes) and unique (name, provider) | 2026-10-23 |
+| `0015` | `0014` | `0015_password_reset_tokens.py` | password_reset_tokens: hashed, single-use, 30-min recovery tokens | 2026-10-24 |
 
 ## Rules for a new migration
 

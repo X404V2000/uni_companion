@@ -13,6 +13,7 @@ from app.models.analytics import (
 )
 from app.models.bursary import Bursary
 from app.models.material import StudyMaterial
+from app.models.password_reset import PasswordResetToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
@@ -32,4 +33,5 @@ __all__ = [
     "BriefChunk",
     "RefreshToken",
     "Bursary",
+    "PasswordResetToken",
 ]

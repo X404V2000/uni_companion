@@ -19,7 +19,7 @@ from the hackathon submission repository.
 | Feature | Description |
 |---|---|
 | **AI summaries** | Upload a PDF/DOCX/PPTX, paste text, or give a link. Long documents are chunked and merged rather than truncated, so a 60-page guide is covered in full. |
-| **Find materials** | Ranked search over a curated, per-module resource library (articles, journals, PDFs, YouTube). Deterministic relevance tiers — no black box. |
+| **Find materials** | Ranked search over a curated, per-module resource library (articles, journals, PDFs). Deterministic relevance tiers — no black box. |
 | **Chat with your brief** | Ask questions about your own uploaded document, with answers grounded in and citing that document. |
 | **Planner** | Modules, deadlines, and priority/weight tracking. |
 | **At-risk detection** | Flags tasks at risk from deadline proximity, weighting, and workload clustering. |

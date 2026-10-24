@@ -1,4 +1,4 @@
-# Varsity Companion
+# ScrapyMog
 
 An AI study companion for South African university students. Summarise lecture
 material, find curated study resources per module, plan deadlines, and detect

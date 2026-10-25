@@ -7,6 +7,7 @@ export type IconName =
   | "bookmark"
   | "calendar"
   | "settings"
+  | "mic"
   | "help"
   | "bell"
   | "chevron"
@@ -57,6 +58,15 @@ export function Icon({
       <>
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M7 3v4M17 3v4M3 10h18" />
+      </>
+    ),
+    mic: (
+      <>
+        {/* A microphone capsule on a stand, drawn with the same stroke weight
+            and no fill as every other icon, so it does not stand out as the
+            one icon from a different set. */}
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" />
       </>
     ),
     settings: (

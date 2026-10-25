@@ -11,6 +11,8 @@
 import { useRef, useState } from "react";
 
 import { Icon } from "./Icon";
+import MicButton from "./MicButton";
+import { useSpeech } from "../lib/useSpeech";
 import { summarize } from "../lib/api";
 import { extractTextFromFile, UnsupportedFileError } from "../lib/fileText";
 import { renderMarkdown } from "../lib/markdown";
@@ -27,6 +29,20 @@ function SummariesTab({
   moduleList: ModuleRow[];
 }) {
   const [mode, setMode] = useState<"upload" | "paste">("upload");
+  /**
+   * Dictation for the paste box.
+   *
+   * Final phrases are APPENDED to whatever is already there, so speaking twice
+   * adds to the notes instead of replacing the first sentence. The student can
+   * always edit the result before summarising - recognition makes mistakes on
+   * names and technical terms, and a misheard word must not be summarised as
+   * fact.
+   */
+  const speech = useSpeech({
+    onFinal: (text) =>
+      setPasted((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text)),
+  });
+
   const [pasted, setPasted] = useState("");
   const [fileText, setFileText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -161,7 +177,19 @@ function SummariesTab({
               </button>
             </div>
 
-            <div className="flex min-h-[80px] items-center justify-between gap-4 px-3 py-3">
+            <div className="flex min-h-[80px] items-start justify-between gap-3 px-3 py-3">
+              {/* Only in paste mode: dictation fills the text box, and in upload
+                  mode there is no box to fill. */}
+              {mode === "paste" && (
+                <MicButton
+                  isSupported={speech.isSupported}
+                  state={speech.state}
+                  interim={speech.interim}
+                  error={speech.error}
+                  onToggle={speech.toggle}
+                  label="Dictate"
+                />
+              )}
               <input
                 ref={fileInputRef}
                 type="file"

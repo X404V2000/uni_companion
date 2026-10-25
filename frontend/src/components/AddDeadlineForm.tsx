@@ -16,6 +16,9 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "./Icon";
 import { createModule, createTask } from "../lib/api";
+import MicButton from "./MicButton";
+import { useSpeech } from "../lib/useSpeech";
+import { parseSpokenDeadline } from "../lib/spokenDeadline";
 import { describeError } from "../lib/session";
 
 type ModuleRow = { id: string; code: string; name: string };
@@ -39,6 +42,31 @@ function AddDeadlineForm({
   const [title, setTitle] = useState("");
   const [moduleId, setModuleId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  /**
+   * "Practical three due friday" -> fills the title and the due date.
+   *
+   * It FILLS THE FORM, it does not submit it. A misheard date that saved itself
+   * is a missed deadline, and this app exists to prevent exactly that. The
+   * student sees the result, corrects anything wrong, and presses Save.
+   */
+  const speech = useSpeech({
+    onFinal: (text) => {
+      const parsed = parseSpokenDeadline(text);
+      if (parsed.title) setTitle(parsed.title);
+      if (parsed.due) setDueDate(parsed.due);
+      // Telling the student which words became the date is what makes a wrong
+      // guess noticeable before they save it.
+      setHeard(
+        parsed.dateWords
+          ? `Heard “${text}” — using ${parsed.dateWords} as the due date.`
+          : `Heard “${text}” — no date in that. Set one below.`,
+      );
+    },
+  });
+
+  /** Last thing the microphone understood, shown so the student can judge it. */
+  const [heard, setHeard] = useState("");
+
   const [priority, setPriority] = useState<string>("MEDIUM");
   const [taskType, setTaskType] = useState<string>("ASSIGNMENT");
   const [weight, setWeight] = useState("");
@@ -162,6 +190,23 @@ function AddDeadlineForm({
       onSubmit={submit}
       className="space-y-3 rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5"
     >
+      {/* Dictate the whole deadline: "practical three due friday" fills both the
+          title and the date. It never saves - see the parser's note on why. */}
+      <MicButton
+        isSupported={speech.isSupported}
+        state={speech.state}
+        interim={speech.interim}
+        error={speech.error}
+        onToggle={speech.toggle}
+        label="Speak the deadline"
+      />
+
+      {heard && (
+        <p className="rounded-xl bg-[var(--color-bg)] px-3 py-2 text-[10px] leading-relaxed text-[var(--color-fg-subtle)]">
+          {heard}
+        </p>
+      )}
+
       <input
         required
         value={title}

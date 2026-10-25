@@ -1,0 +1,191 @@
+<mxfile host="app.diagrams.net" agent="varsity-companion" version="24.0.0">
+  <diagram id="voice-arch" name="Voice-to-text integration">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ================= TITLE ================= -->
+        <mxCell id="title" value="&lt;b style=&quot;font-size:18px&quot;&gt;Voice-to-text — integration design&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px&quot;&gt;Phase 1 = browser-native speech recognition (R0). Phase 2 = server transcription, only if a real need appears.&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ================= EXISTING SYSTEM ================= -->
+        <mxCell id="zone_existing" value="" style="rounded=0;dashed=1;dashPattern=8 4;strokeColor=#9aa0a6;fillColor=#f1f3f4;opacity=60;container=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1520" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="zone_existing_lbl" value="&lt;b&gt;EXISTING SYSTEM — already built and live (do not modify)&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#5f6368;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="108" width="600" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="web_app" value="&lt;b&gt;Web app&lt;/b&gt;&lt;br&gt;React + Vite&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Cloudflare Workers&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;SummariesTab — paste or upload PDF/DOCX&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="150" width="230" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mobile_app" value="&lt;b&gt;Mobile app&lt;/b&gt;&lt;br&gt;Expo / React Native&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;separate frontend — needs its own screen&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="285" width="230" height="85" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" value="&lt;b&gt;FastAPI&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Render · Docker&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;/api/v1/ai/* · auth · rate limit · quota&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;" vertex="1" parent="1">
+          <mxGeometry x="420" y="185" width="250" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ai_svc" value="&lt;b&gt;ai_service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;chunk → prompt → Gemini → cache&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;quota 10/user/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;" vertex="1" parent="1">
+          <mxGeometry x="760" y="150" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Neon&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;ai_summary_cache · user_ai_quota&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;" vertex="1" parent="1">
+          <mxGeometry x="770" y="265" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="gemini" value="&lt;b&gt;Gemini&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;gemini-flash-latest&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="150" width="180" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_web_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="web_app" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_web_api_lbl" value="text (JSON)" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="e_web_api">
+          <mxGeometry x="-0.2" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_mob_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;" edge="1" parent="1" source="mobile_app" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_api_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="api" target="ai_svc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_svc_gem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#d6b656;strokeWidth=2;" edge="1" parent="1" source="ai_svc" target="gemini">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_svc_db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#d79b00;strokeWidth=2;startArrow=block;startFill=1;" edge="1" parent="1" source="ai_svc" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ================= NEW SYSTEM ================= -->
+        <mxCell id="zone_new" value="" style="rounded=0;dashed=0;strokeColor=#b85450;fillColor=#fce4e4;opacity=45;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="1520" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="zone_new_lbl" value="&lt;b&gt;NEW — voice input. Everything here is additive; no existing endpoint or table changes.&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#b85450;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="448" width="700" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Browser side -->
+        <mxCell id="mic_btn" value="&lt;b&gt;① MicButton&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;new component&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;idle → listening → thinking&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="490" width="210" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="perm" value="&lt;b&gt;Microphone permission&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;browser prompt&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;denied → typed input still works&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="480" width="150" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="stt" value="&lt;b&gt;② Web Speech API&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;window.SpeechRecognition&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;runs IN THE BROWSER&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;no server, no cost&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;" vertex="1" parent="1">
+          <mxGeometry x="530" y="490" width="230" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="transcript" value="&lt;b&gt;③ Transcript&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;editable text box&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#b85450&quot;&gt;student reviews and corrects&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#b85450&quot;&gt;BEFORE it goes anywhere&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;" vertex="1" parent="1">
+          <mxGeometry x="810" y="480" width="230" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_mic_perm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="mic_btn" target="perm">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_perm_stt" value="granted" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="perm" target="stt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_stt_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="stt" target="transcript">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_perm_deny" value="denied → fall back to typing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;dashed=1;fontSize=9;" edge="1" parent="1" source="perm" target="text_fallback">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Existing entry point -->
+        <mxCell id="text_fallback" value="&lt;b&gt;Existing text input&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;SummariesTab textarea&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;UNCHANGED — voice only fills it&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;" vertex="1" parent="1">
+          <mxGeometry x="810" y="630" width="230" height="85" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_trans_text" value="pre-fills the same field" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="transcript" target="text_fallback">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_text_api" value="existing POST /ai/summary  (UNCHANGED)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="text_fallback" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 2 -->
+        <mxCell id="phase2" value="" style="rounded=1;dashed=1;strokeColor=#999999;fillColor=#f5f5f5;opacity=55;" vertex="1" parent="1">
+          <mxGeometry x="80" y="760" width="960" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase2_lbl" value="&lt;b&gt;PHASE 2 — OPTIONAL, only if a real need appears&lt;/b&gt; &lt;font style=&quot;font-size:10px;color:#666&quot;&gt;(not built now)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="95" y="766" width="600" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_need" value="&lt;b&gt;When it is justified&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;· iOS Safari or a browser without Web Speech&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;· podcasts / lecture recordings, not just dictation&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;· students want it offline&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;align=left;spacingLeft=8;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="795" width="280" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_rec" value="&lt;b&gt;MediaRecorder&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;client encodes audio&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;short dictation only&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;align=center;" vertex="1" parent="1">
+          <mxGeometry x="420" y="795" width="170" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_api" value="&lt;b&gt;POST /ai/transcribe&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;new endpoint&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;auth + rate limit + size cap&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;quota shared with AI&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;" vertex="1" parent="1">
+          <mxGeometry x="640" y="795" width="200" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_model" value="&lt;b&gt;Gemini audio&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;same provider key&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#b85450&quot;&gt;audio leaves the phone&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#b85450&quot;&gt;needs POPIA note + consent&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;" vertex="1" parent="1">
+          <mxGeometry x="890" y="795" width="130" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_p2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#999999;strokeWidth=2;dashed=1;" edge="1" parent="1" source="p2_need" target="p2_rec">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_p2b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#999999;strokeWidth=2;dashed=1;" edge="1" parent="1" source="p2_rec" target="p2_api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_p2c" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#999999;strokeWidth=2;dashed=1;" edge="1" parent="1" source="p2_api" target="p2_model">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ================= DECISIONS ================= -->
+        <mxCell id="zone_dec" value="" style="rounded=0;strokeColor=#666666;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="440" width="490" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="zone_dec_lbl" value="&lt;b&gt;WHY THIS SHAPE&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="450" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d1" value="&lt;b&gt;1. Recognition happens in the browser&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Audio never reaches our servers in phase 1. That keeps the cost at zero and keeps us out of holding a student's voice — the most sensitive thing a POPIA-conscious app could ask for.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="480" width="455" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d2" value="&lt;b&gt;2. The student edits before anything is saved&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Speech recognition makes mistakes, especially with names and technical terms. The transcript lands in an editable box, so a misheard word is corrected by the student, not sent to the summariser as fact.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="560" width="455" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d3" value="&lt;b&gt;3. Nothing existing is modified&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Voice fills the SAME textarea the student already types into and calls the SAME summarise endpoint. No new AI endpoints, no schema change, no quota change. If the mic is removed, the app is exactly as it is today.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="640" width="455" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d4" value="&lt;b&gt;4. Typing always remains&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Permission denied, an unsupported browser, a quiet room, a lecture in progress: the mic is an extra way in, never the only one. The button hides itself when unsupported rather than failing on tap.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="720" width="455" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d5" value="&lt;b&gt;5. Honest about what it cannot do&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;No offline recognition, no accents guarantee, no lecture recording in phase 1. Saying so is cheaper than a student discovering it while standing in a lecture hall.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="800" width="455" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="d6" value="&lt;b&gt;Cost: R0 in phase 1&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;No new dependency, no new service, no audio storage. Phase 2 is the only version that costs money per minute.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="880" width="455" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="leg" value="&lt;b&gt;Legend&lt;/b&gt;  &amp;nbsp;&lt;font color=&quot;#6c8ebf&quot;&gt;■ existing frontend&lt;/font&gt; &amp;nbsp;&lt;font color=&quot;#82b366&quot;&gt;■ existing backend&lt;/font&gt; &amp;nbsp;&lt;font color=&quot;#9673a6&quot;&gt;■ new (phase 1)&lt;/font&gt; &amp;nbsp;&lt;font color=&quot;#999999&quot;&gt;■ optional (phase 2)&lt;/font&gt; &amp;nbsp;-- dashed = optional/fallback" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1030" width="1100" height="24" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

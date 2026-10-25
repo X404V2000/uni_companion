@@ -3,6 +3,18 @@ import { Icon } from "./Icon";
 import { login, signup } from "../lib/api";
 import { describeError, rememberSession } from "../lib/session";
 
+/**
+ * Where a locked-out student asks for a recovery link.
+ *
+ * International format, digits only, e.g. "27821234567". Left as a single
+ * constant because it is the one thing that changes if support moves, and it
+ * must not be buried in the middle of a component.
+ *
+ * If this is empty the WhatsApp button is not rendered at all - a button that
+ * opens a chat with nobody would be worse than no button.
+ */
+const SUPPORT_CONTACT: string = "";
+
 function AuthPage({ onSuccess }: { onSuccess: () => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -140,8 +152,9 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   1
                 </span>
                 <span>
-                  Message support and say <strong>“I am locked out”</strong> with
-                  the email address you signed up with.
+                  Use the <strong>“Get help”</strong> button at the end of
+                  this panel and say <strong>“I am locked out”</strong> with the
+                  email address you signed up with.
                 </span>
               </li>
               <li className="flex gap-2.5">
@@ -169,10 +182,28 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
               that costs nothing and cancels the old link.
             </p>
 
+            {/* The instruction above is only useful if there is somewhere to
+                send it. The founder asked for the minimum: one tappable contact,
+                no email provider, no cost. WhatsApp opens with the message
+                already written so a locked-out student does not have to compose
+                it while panicking about a deadline. */}
+            {SUPPORT_CONTACT ? (
+              <a
+                href={`https://wa.me/${SUPPORT_CONTACT.replace(/\D/g, "")}?text=${encodeURIComponent(
+                  "I am locked out of Varsity Companion. My signup email is: ",
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-teal)] py-3 text-[11px] font-extrabold text-[var(--color-bg)]"
+              >
+                Get help on WhatsApp
+              </a>
+            ) : null}
+
             <button
               type="button"
               onClick={() => setShowRecovery(false)}
-              className="mt-4 w-full rounded-xl bg-[var(--color-surface)] py-3 text-[11px] font-extrabold text-[var(--color-fg)]"
+              className="mt-2 w-full rounded-xl bg-[var(--color-surface)] py-3 text-[11px] font-extrabold text-[var(--color-fg)]"
             >
               Back to sign in
             </button>

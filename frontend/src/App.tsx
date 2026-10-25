@@ -357,6 +357,7 @@ export default function App() {
                 notify={notify}
                 moduleList={moduleList}
                 onModulesChanged={reloadModules}
+                onTabChange={setActiveTab}
               />
             )}
           </div>

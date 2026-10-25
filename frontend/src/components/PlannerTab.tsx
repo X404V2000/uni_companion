@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "./Icon";
+import PlannerBursaries from "./PlannerBursaries";
 import AddDeadlineForm from "./AddDeadlineForm";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./states";
 import { completeTask, getTasks } from "../lib/api";
@@ -93,10 +94,12 @@ function PlannerTab({
   notify,
   moduleList,
   onModulesChanged,
+  onTabChange,
 }: {
   notify: (msg: string) => void;
   moduleList: ModuleRow[];
   onModulesChanged: () => void;
+  onTabChange: (tab: string) => void;
 }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +172,11 @@ function PlannerTab({
         />
       )}
 
+
+      {/* Funding deadlines sit ABOVE the academic list on purpose: a bursary
+          closing in three days is the thing a student is most likely to miss,
+          because nothing in their day reminds them of it. */}
+      <PlannerBursaries onOpenBursaries={() => onTabChange("Bursaries")} />
 
       <div className="space-y-3">
         {loading && <LoadingSkeleton rows={4} label="Loading your deadlines" />}

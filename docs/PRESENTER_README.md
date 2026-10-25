@@ -113,9 +113,24 @@ Go to **AI**. If a summary is pre-generated, show it.
 *(Do not rely on generating a summary live — it depends on an external AI service
 and can be slow or unavailable.)*
 
-### 6. Planner (30s)
+### 6. Planner - the money and the marks in one place (45s)
 Go to **Planner**.
-> "Every deadline in one calendar."
+
+> "Every deadline in one calendar. Assignments *and* funding."
+
+**Point at the Funding deadlines section first** - it is the newest and the most
+persuasive. Read one aloud:
+
+> "Astron Energy closes in 1 day. Discovery Foundation in 5. These are not
+> academic tasks you can tick off - the application happens on the provider's
+> site, so each one links straight there."
+
+Then the key line:
+> "A missed assignment costs a mark. A missed bursary costs a year. That's why
+> they are on the same screen."
+
+If asked about ordering: soonest first, and anything inside a week turns red.
+That was a deliberate choice, not an accident.
 
 ### 7. Settings, privacy and the delete account (30s)
 Tap the gear.
@@ -123,12 +138,24 @@ Tap the gear.
 > is stored, turn off anonymous usage signals, or delete their account
 > completely. Deleting requires their password, because it's permanent."
 
-### 8. Coming this weekend (20s)
-> "Tomorrow and this weekend we're adding two things students asked for:
-> bursary recommendations matched to their degree and year, and a study plan
-> that says 'you have nine hours of work this week — start with this'. Bursary
-> closing dates will sit in the same planner as assignments, because a missed
-> funding deadline costs a student a year."
+### 8. Already live, and what comes next (25s)
+
+**Do not say these are "coming" - they are built and deployed.** Say them in the
+present tense, because that is the stronger claim and it is true.
+
+> "The two things students asked for are already in the app. Bursaries matched
+> to your degree, year and institution - twelve verified funds, eleven of which
+> close inside eight days. And a study plan on the home screen that totals your
+> week and tells you what to open first."
+
+Then the honest forward-looking part:
+
+> "Next is self-service password recovery by email - today it is handled
+> personally - and getting the same two features onto the phone app."
+
+**The strongest single fact you have:** say plainly that eleven of the twelve
+bursaries close within eight days. It is verifiable on screen and it makes the
+product feel live rather than mocked up. 
 
 ---
 
@@ -144,14 +171,29 @@ Tap the gear.
 - Study planner
 - Privacy controls: consent toggle, account deletion with password re-confirmation
 - Honest error messages ("Module code is too short", not "server error")
-- Android app in progress (same product, native shell)
+- Honest error messages ("Module code is too short", not "server error")
+- **Password recovery** - a one-time, 30-minute link restores a locked-out account
+- **Android APK**, built and installable (`za.co.varsitycompanion`)
 
-**Built this weekend (hackathon)**
-- **Bursary recommendations** — matched to field of study, year and institution,
-  with closing dates and a link to each official application page
-- **Smart study plan** — a transparent estimate of hours needed this week and the
-  top 3 things to start with
-- **Bursary deadlines in the planner** — academic and funding deadlines in one list
+**The hackathon features - all three are built, deployed and live**
+- **Bursary recommendations** - 12 verified funds matched to field of study, year
+  and institution, each with its closing date and a link to the official page
+- **Smart study plan** - a transparent hours estimate for the week and the top 3
+  things to start with, on the home screen
+- **One planner** - funding deadlines above academic ones, soonest first
+
+---
+
+### If you show the APK, read this
+
+**The APK does NOT have Bursaries or the Study plan.** It was built from the
+mobile app, which is a separate frontend and lags the web by these two features.
+
+- **Web link** -> show Bursaries and the study plan
+- **APK** -> show modules, deadlines, materials, settings, first-run guide
+
+Never open the APK expecting bursaries. Show the APK as evidence that a native
+app exists and installs; show the web for the new features.
 
 ---
 

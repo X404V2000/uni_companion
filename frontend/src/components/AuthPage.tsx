@@ -17,6 +17,16 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState("");
 
   /**
+   * Whether the "how do I recover my account" panel is open.
+   *
+   * The link existed and did nothing: it was a <button> with no handler, so a
+   * locked-out student clicked the most obvious way out and nothing happened.
+   * That is worse than no link at all - it reads as the app being broken at the
+   * exact moment the student most needs it to work.
+   */
+  const [showRecovery, setShowRecovery] = useState(false);
+
+  /**
    * Submit against the real backend.
    *
    * `pending` guards a double submit: the request takes a round trip, and
@@ -104,6 +114,70 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
         <div className="mb-7">
         </div>
 
+        {/*
+          RECOVERY PANEL.
+
+          Never says "check your email": there is no email delivery yet, so that
+          would be a promise the product cannot keep and a student would sit
+          waiting for a message that never arrives. It says what is true - a
+          person sends you a link - and gives the one thing the student can act
+          on right now, which is who to ask.
+
+          It replaces the form rather than sitting above it, so a locked-out
+          student is not looking at a password box they cannot fill.
+        */}
+        {showRecovery ? (
+          <div className="rounded-2xl border border-[var(--color-teal)]/40 bg-[var(--color-teal)]/8 p-5">
+            <h2 className="font-display text-base font-extrabold">Get back into your account</h2>
+            <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+              Recovery is handled by a person, not automatically, so that a
+              locked-out account is never left to a waiting email.
+            </p>
+
+            <ol className="mt-4 space-y-3 text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
+              <li className="flex gap-2.5">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">
+                  1
+                </span>
+                <span>
+                  Message support and say <strong>“I am locked out”</strong> with
+                  the email address you signed up with.
+                </span>
+              </li>
+              <li className="flex gap-2.5">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">
+                  2
+                </span>
+                <span>
+                  You will get back a <strong>recovery link</strong>. It works
+                  once and expires after 30 minutes.
+                </span>
+              </li>
+              <li className="flex gap-2.5">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">
+                  3
+                </span>
+                <span>
+                  Open the link, choose a new password, and sign in as usual.
+                </span>
+              </li>
+            </ol>
+
+            <p className="mt-4 rounded-xl bg-[var(--color-bg)]/60 p-3 text-[10px] leading-relaxed text-[var(--color-fg-subtle)]">
+              Only the person holding the link can use it, and it stops working
+              the moment it has been used. If it has expired, ask for a new one —
+              that costs nothing and cancels the old link.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowRecovery(false)}
+              className="mt-4 w-full rounded-xl bg-[var(--color-surface)] py-3 text-[11px] font-extrabold text-[var(--color-fg)]"
+            >
+              Back to sign in
+            </button>
+          </div>
+        ) : (
         <form onSubmit={submit} className="space-y-4">
           {mode === "signup" && (
             <label className="block">
@@ -142,7 +216,14 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
             <span className="mb-2 flex items-center justify-between text-[11px] font-bold text-[var(--color-fg-muted)]">
               Password
               {mode === "login" && (
-                <button type="button" className="font-bold text-[var(--color-success)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRecovery(true);
+                    setError("");
+                  }}
+                  className="font-bold text-[var(--color-success)] underline-offset-2 hover:underline"
+                >
                   Forgot password?
                 </button>
               )}
@@ -200,6 +281,7 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
             <Icon name="arrow" className="h-4 w-4" />
           </button>
         </form>
+        )}
 
         <div className="my-7 flex items-center gap-3">
           <span className="h-px flex-1 bg-[var(--color-border)]" />

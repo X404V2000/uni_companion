@@ -46,6 +46,14 @@ export default function MicButton({
   if (!isSupported) return null;
 
   const listening = state === "listening";
+  /**
+   * The moment the button is tapped it says "Starting…".
+   *
+   * Some engines accept the start call and then never respond at all (Chrome
+   * without a working speech service). Without this intermediate state the
+   * button looks unchanged for four seconds, which reads as a dead control.
+   */
+  const starting = state === "starting";
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -57,7 +65,9 @@ export default function MicButton({
         className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-extrabold transition ${
           listening
             ? "bg-[var(--color-danger)] text-white"
-            : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-fg-muted)]"
+            : starting
+              ? "border border-[var(--color-teal)] bg-[var(--color-teal)]/15 text-[var(--color-teal)]"
+              : "border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-fg-muted)]"
         }`}
       >
         {/* A pulsing dot while the microphone is live, so it is never ambiguous
@@ -70,7 +80,7 @@ export default function MicButton({
         ) : (
           <Icon name="mic" className="h-3.5 w-3.5" />
         )}
-        {listening ? "Listening…" : label}
+        {listening ? "Listening…" : starting ? "Starting…" : label}
       </button>
 
       {/* Words as they are recognised. Shown but never committed until final,

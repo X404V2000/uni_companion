@@ -84,7 +84,14 @@ function describeSpeechError(code: string, permanent: boolean): string {
   }
 }
 
-export type SpeechState = "idle" | "listening" | "error";
+/**
+ * How long to wait for the engine to actually start before admitting it did not.
+ * Long enough for a slow phone to boot the speech service, short enough that a
+ * student is not left staring at an unchanged button.
+ */
+const START_TIMEOUT_MS = 4000;
+
+export type SpeechState = "idle" | "starting" | "listening" | "error";
 
 export function useSpeech({
   lang = "en-ZA",
@@ -182,10 +189,59 @@ export function useSpeech({
     };
 
     recognitionRef.current = rec;
+    setState("starting");
+
+    /**
+     * WATCHDOG - the reason this feature silently did nothing before.
+     *
+     * Some engines accept `start()` and then never fire a single event: not
+     * onstart, not onerror, nothing. Chrome does this when its speech service
+     * (which is Google's, and needs network plus a Google speech component) is
+     * unavailable; Brave works because it ships its own engine. Reproduced on
+     * the live site: `start()` returned, then six seconds of silence.
+     *
+     * Without this timeout the button stayed on "Dictate" forever, which is
+     * indistinguishable from a broken app. The student deserved an answer
+     * either way, so after a short grace period we say what we know.
+     */
+    const watchdog = window.setTimeout(() => {
+      if (recognitionRef.current !== rec) return;
+      try {
+        rec.abort();
+      } catch {
+        /* ignore */
+      }
+      recognitionRef.current = null;
+      setState("error");
+      setError(
+        "This browser did not start listening. Voice needs Chrome or Brave with " +
+          "working speech support - if it keeps happening, type instead.",
+      );
+    }, START_TIMEOUT_MS);
+
+    // Any real lifecycle event clears the watchdog: the engine is alive.
+    const disarm = () => window.clearTimeout(watchdog);
+    const userOnStart = rec.onstart;
+    const userOnEnd = rec.onend;
+    const userOnError = rec.onerror;
+    rec.onstart = () => {
+      disarm();
+      userOnStart?.();
+    };
+    rec.onend = () => {
+      disarm();
+      userOnEnd?.();
+    };
+    rec.onerror = (e) => {
+      disarm();
+      userOnError?.(e);
+    };
+
     try {
       rec.start();
     } catch {
       // start() throws if it is already running; treat as listening.
+      disarm();
       setState("listening");
     }
   }, [lang]);
@@ -204,6 +260,7 @@ export function useSpeech({
     interim,
     error,
     isListening: state === "listening",
+    isStarting: state === "starting",
     start,
     stop,
     toggle,

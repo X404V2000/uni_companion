@@ -129,21 +129,23 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
         {/*
           RECOVERY PANEL.
 
-          Never says "check your email": there is no email delivery yet, so that
+          Never says "check your email": there is no email delivery, so that
           would be a promise the product cannot keep and a student would sit
-          waiting for a message that never arrives. It says what is true - a
-          person sends you a link - and gives the one thing the student can act
-          on right now, which is who to ask.
+          waiting for a message that never arrives.
 
-          It replaces the form rather than sitting above it, so a locked-out
-          student is not looking at a password box they cannot fill.
+          An earlier version told the student to press a "Get help" button that
+          only existed once a phone number was configured. Until then it named a
+          control that was not on the screen - a dead end, the same fault the
+          Forgot password link had before it was wired. It now states a next step
+          that is true today, and adds the WhatsApp button only when there is
+          actually a number behind it.
         */}
         {showRecovery ? (
           <div className="rounded-2xl border border-[var(--color-teal)]/40 bg-[var(--color-teal)]/8 p-5">
-            <h2 className="font-display text-base font-extrabold">Get back into your account</h2>
+            <h2 className="font-display text-base font-extrabold">Can&apos;t sign in?</h2>
             <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
-              Recovery is handled by a person, not automatically, so that a
-              locked-out account is never left to a waiting email.
+              This is a demo build, so password recovery is not automatic yet.
+              Two things you can do right now:
             </p>
 
             <ol className="mt-4 space-y-3 text-[11px] leading-relaxed text-[var(--color-fg-muted)]">
@@ -152,9 +154,8 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   1
                 </span>
                 <span>
-                  Use the <strong>“Get help”</strong> button at the end of
-                  this panel and say <strong>“I am locked out”</strong> with the
-                  email address you signed up with.
+                  <strong>Make a new account.</strong> Accounts do not share data,
+                  so a fresh one starts clean.
                 </span>
               </li>
               <li className="flex gap-2.5">
@@ -162,31 +163,13 @@ function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   2
                 </span>
                 <span>
-                  You will get back a <strong>recovery link</strong>. It works
-                  once and expires after 30 minutes.
-                </span>
-              </li>
-              <li className="flex gap-2.5">
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-teal)] text-[10px] font-extrabold text-[var(--color-bg)]">
-                  3
-                </span>
-                <span>
-                  Open the link, choose a new password, and sign in as usual.
+                  <strong>Ask whoever sent you the demo link</strong> to restore the
+                  old account. Say &ldquo;I am locked out&rdquo; with the email
+                  address you signed up with.
                 </span>
               </li>
             </ol>
 
-            <p className="mt-4 rounded-xl bg-[var(--color-bg)]/60 p-3 text-[10px] leading-relaxed text-[var(--color-fg-subtle)]">
-              Only the person holding the link can use it, and it stops working
-              the moment it has been used. If it has expired, ask for a new one —
-              that costs nothing and cancels the old link.
-            </p>
-
-            {/* The instruction above is only useful if there is somewhere to
-                send it. The founder asked for the minimum: one tappable contact,
-                no email provider, no cost. WhatsApp opens with the message
-                already written so a locked-out student does not have to compose
-                it while panicking about a deadline. */}
             {SUPPORT_CONTACT ? (
               <a
                 href={`https://wa.me/${SUPPORT_CONTACT.replace(/\D/g, "")}?text=${encodeURIComponent(

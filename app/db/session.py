@@ -61,10 +61,18 @@ def _normalize_database_url(raw_url: str) -> str:
 engine = create_engine(
         _normalize_database_url(settings.database_url),
         pool_pre_ping=True,     # Test connection before using it (handles Neon idle suspension)
-        pool_size=5,            # Keep 5 connections ready in the pool
-        max_overflow=5,         # Allow up to 5 additional temporary connections during bursts
+        # pool_size lowered from 5 to 2 on 2026-10-26 after Neon reported 80.8%
+        # of compute used. Held-open connections are not free on Neon: every idle
+        # connection in the pool keeps the compute endpoint busy, so a warm API
+        # process held 5 of them awake indefinitely. The app serves one student
+        # at a time; two connections are ample, and overflow still covers a burst.
+        pool_size=2,            # Keep 2 connections ready in the pool
+        max_overflow=3,         # Allow up to 3 additional temporary connections during bursts
         pool_timeout=30,        # If pool is exhausted, wait up to 30s before timing out
-        pool_recycle=1800,      # Recycle connections after 30 min to prevent stale connections
+        # Recycle sooner. A connection idle for 30 minutes was being held while
+        # Neon wanted to scale down; 5 minutes lets the compute endpoint rest
+        # between quiet periods instead of being pinned by a stale socket.
+        pool_recycle=300,       # Recycle connections after 5 min to prevent stale connections
     )
 
 ## SessionLocal is a Factory, not a session itself. Calling SessionLocal()

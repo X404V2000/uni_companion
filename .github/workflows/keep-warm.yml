@@ -20,9 +20,10 @@
 #        can do that; the app already handles it by saying the connection failed
 #        rather than hanging.
 #
-# WHY EVERY 10 MINUTES
-# Render sleeps at ~15 minutes idle. Pinging every 10 gives one retry of margin
-# before the deadline, without burning extra minutes.
+# WHY EVERY 20 MINUTES, DAYTIME ONLY
+# Render sleeps at ~15 minutes idle, so 20 minutes leaves a two-minute window where
+# it is already asleep - acceptable, because the alternative was exhausting Neon
+# compute. Simplicity beats a cleverer schedule here.
 #
 # WHY A FIXED SCHEDULE AND NOT "ONLY BEFORE DEMOS"
 # GitHub's scheduled runs are best-effort and can be delayed by several minutes
@@ -33,8 +34,31 @@ name: Keep backend warm
 
 on:
   schedule:
-    # Every 10 minutes. GitHub crons are UTC and best-effort.
-    - cron: "*/10 * * * *"
+    # DAYTIME, WEEKDAY PINGS ONLY - this changed on 2026-10-26.
+    #
+    # WHAT IT USED TO BE AND WHY IT HURT
+    # Every 10 minutes, all day, every day: 144 wake-ups daily, 1,008 a week.
+    # Each one cold-starts the Render service and opens a Neon connection, so
+    # every ping was a compute wake-up on a database that holds 9 MB. Neon sent
+    # an 80.8% compute alert. The pings were the cause, not the data.
+    #
+    # TWO WAKERS, BOTH OF WHICH KEEP COMPUTE AWAKE
+    # Render spins up the container; the container then holds pool_size=5 Neon
+    # connections. So a ping costs far more than one query.
+    #
+    # WHAT IT IS NOW
+    # Only during hours a student might open the app, on weekdays, every 20
+    # minutes: 07:00-17:00 SAST is 05:00-15:00 UTC, Mon-Fri (cron day 1-5).
+    # That is roughly 30 pings a day instead of 144 - about a 79% cut.
+    #
+    # WHAT THIS DELIBERATELY GIVES UP
+    # The first student to open the app after hours waits 5-15 s for Render to
+    # wake. That is a real cost and it is worth stating: the alternative was a
+    # suspended database, which is worse for everyone.
+    #
+    # BEFORE A DEMO: run this by hand from the Actions tab (workflow_dispatch),
+    # which is why that trigger is kept.
+    - cron: "*/20 5-15 * * 1-5"
   # Lets you poke it by hand from the Actions tab before recording.
   workflow_dispatch:
 
